@@ -787,6 +787,121 @@
 			]
 		},
 		{
+			"name": "Orders & Supplier Matching",
+			"item": [
+				{
+					"name": "Find Closest Supplier - Happy Path",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PLA\",\n  \"color\": \"Red\",\n  \"requiredQuantityKg\": 5.0,\n  \"buyerAddress\": \"Los Angeles, CA, USA\",\n  \"buyerLatitude\": 34.0522,\n  \"buyerLongitude\": -118.2437\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Find the closest supplier with required filament stock using geographic distance calculation (Haversine formula)"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - Different Material",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"ABS\",\n  \"color\": \"Blue\",\n  \"requiredQuantityKg\": 10.0,\n  \"buyerAddress\": \"San Francisco, CA, USA\",\n  \"buyerLatitude\": 37.7749,\n  \"buyerLongitude\": -122.4194\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Search for ABS material instead of PLA"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - Large Quantity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PLA\",\n  \"color\": \"Black\",\n  \"requiredQuantityKg\": 50.0,\n  \"buyerAddress\": \"New York, NY, USA\",\n  \"buyerLatitude\": 40.7128,\n  \"buyerLongitude\": -74.0060\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Test with large quantity requirement to see if suppliers have sufficient stock"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - International Location",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PLA\",\n  \"color\": \"White\",\n  \"requiredQuantityKg\": 3.0,\n  \"buyerAddress\": \"London, UK\",\n  \"buyerLatitude\": 51.5074,\n  \"buyerLongitude\": -0.1278\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Test with international buyer location"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - No Stock Available",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PETG\",\n  \"color\": \"Purple\",\n  \"requiredQuantityKg\": 100.0,\n  \"buyerAddress\": \"Chicago, IL, USA\",\n  \"buyerLatitude\": 41.8781,\n  \"buyerLongitude\": -87.6298\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Test scenario where no supplier has the required material/color/quantity"
+					}
+				}
+			]
+		},
+		{
 			"name": "Validation Test Cases",
 			"item": [
 				{
@@ -866,6 +981,72 @@
 							"path": ["products", "null"]
 						},
 						"description": "Should return 400 Bad Request due to path variable validation"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"color\": \"Red\",\n  \"buyerAddress\": \"Los Angeles, CA\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Should return 400 Bad Request due to missing materialType, requiredQuantityKg, and coordinates"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - Invalid Coordinates",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PLA\",\n  \"color\": \"Red\",\n  \"requiredQuantityKg\": 5.0,\n  \"buyerAddress\": \"Invalid Location\",\n  \"buyerLatitude\": 95.0,\n  \"buyerLongitude\": 185.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Should return 400 Bad Request due to invalid latitude (>90) and longitude (>180)"
+					}
+				},
+				{
+					"name": "Find Closest Supplier - Negative Quantity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"materialType\": \"PLA\",\n  \"color\": \"Red\",\n  \"requiredQuantityKg\": -5.0,\n  \"buyerAddress\": \"Los Angeles, CA\",\n  \"buyerLatitude\": 34.0522,\n  \"buyerLongitude\": -118.2437\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/find-closest-supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "find-closest-supplier"]
+						},
+						"description": "Should return 400 Bad Request due to negative quantity"
 					}
 				}
 			]

@@ -55,9 +55,16 @@ Run the **Health Check** request first to ensure the service is running.
 - Stock reservation and release system
 - Low stock and expiry monitoring
 
-### **Validation Test Cases** (4 endpoints)
+### **Orders & Supplier Matching** (5 endpoints) 🆕
+- **Find Closest Supplier**: Geographic distance-based supplier matching
+- Uses **Haversine formula** for precise distance calculation
+- Tests different materials, quantities, and locations
+- Handles scenarios with no available stock
+
+### **Validation Test Cases** (7 endpoints)
 - Test API validation for various error scenarios
 - Demonstrates proper error handling
+- Includes validation tests for the new order API
 
 ---
 
@@ -66,12 +73,13 @@ Run the **Health Check** request first to ensure the service is running.
 ### **Recommended Testing Order:**
 
 1. **Health Check** - Verify service is running
-2. **Create Supplier** - Create a test supplier first
+2. **Create Supplier** - Create a test supplier first (with coordinates!)
 3. **Create Shop** - Create a shop for the supplier
 4. **Create Filament Stock** - Add inventory for the supplier
 5. **Create Product** - Create products for the shop
-6. **Test Search & Filter Operations**
-7. **Test Validation Scenarios**
+6. **Test Order Matching** - Find closest suppliers ⭐ NEW!
+7. **Test Search & Filter Operations**
+8. **Test Validation Scenarios**
 
 ---
 
@@ -115,6 +123,16 @@ Run the **Health Check** request first to ensure the service is running.
 1. GET /filament-stock/low-stock?threshold=10.0
 2. GET /filament-stock/sufficient-quantity?requiredKg=25.0
 3. GET /filament-stock/search?materialType=PLA&color=Red
+```
+
+#### **🌍 Geographic Supplier Matching (NEW!):**
+```
+1. Create suppliers with latitude/longitude coordinates
+2. Add filament stock to those suppliers
+3. POST /orders/find-closest-supplier with buyer location
+4. Test different materials: PLA, ABS, PETG
+5. Try large quantities to test stock availability
+6. Test international locations (London, Tokyo, etc.)
 ```
 
 ---
@@ -168,6 +186,43 @@ You can modify these after creating your test data.
   "error": "Internal Server Error", 
   "message": "Product not found with ID: 999",
   "path": "/products/999"
+}
+```
+
+### **Closest Supplier Success Response:**
+```json
+{
+  "supplier": {
+    "id": 1,
+    "name": "Premium Filaments Co",
+    "email": "info@premiumfilaments.com",
+    "latitude": 34.1522,
+    "longitude": -118.2437,
+    "active": true,
+    "verified": true
+  },
+  "availableStock": {
+    "id": 5,
+    "supplierId": 1,
+    "materialType": "PLA",
+    "color": "Red",
+    "quantityKg": 20.0,
+    "reservedKg": 2.0,
+    "availableQuantityKg": 18.0,
+    "available": true
+  },
+  "distanceKm": 11.23,
+  "message": "Closest supplier found successfully"
+}
+```
+
+### **No Supplier Found Response:**
+```json
+{
+  "supplier": null,
+  "availableStock": null,
+  "distanceKm": null,
+  "message": "No suitable supplier found: No supplier has sufficient stock for PLA Red (required: 50.0 kg)"
 }
 ```
 
