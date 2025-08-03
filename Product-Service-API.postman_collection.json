@@ -1,0 +1,881 @@
+{
+	"info": {
+		"_postman_id": "12345678-1234-1234-1234-123456789012",
+		"name": "Product Service API",
+		"description": "Complete API collection for Product Service with DTO validation and orElseThrow patterns",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Check if the service is running"
+					}
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["products"]
+						}
+					}
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"3D Printed Phone Case\",\n  \"description\": \"Custom phone case made with PLA filament\",\n  \"price\": 25.99,\n  \"imageUrl\": \"https://example.com/phone-case.jpg\",\n  \"stlFileUrl\": \"https://example.com/phone-case.stl\",\n  \"sellerId\": 1,\n  \"shopId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["products"]
+						}
+					}
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated 3D Printed Phone Case\",\n  \"description\": \"Updated custom phone case made with PLA filament\",\n  \"price\": 29.99,\n  \"imageUrl\": \"https://example.com/updated-phone-case.jpg\",\n  \"stlFileUrl\": \"https://example.com/updated-phone-case.stl\",\n  \"sellerId\": 1,\n  \"shopId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Suppliers",
+			"item": [
+				{
+					"name": "Get All Suppliers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers"]
+						}
+					}
+				},
+				{
+					"name": "Get Supplier by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Supplier",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": 100,\n  \"name\": \"Premium Filaments Co\",\n  \"email\": \"info@premiumfilaments.com\",\n  \"phone\": \"+1-555-0123\",\n  \"address\": \"123 Industrial Ave\",\n  \"city\": \"Tech City\",\n  \"state\": \"CA\",\n  \"country\": \"USA\",\n  \"postalCode\": \"90210\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437,\n  \"businessLicense\": \"BL-2024-001\",\n  \"description\": \"High-quality 3D printing filaments supplier\",\n  \"verified\": true,\n  \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suppliers",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers"]
+						}
+					}
+				},
+				{
+					"name": "Update Supplier",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": 100,\n  \"name\": \"Updated Premium Filaments Co\",\n  \"email\": \"info@premiumfilaments.com\",\n  \"phone\": \"+1-555-0123\",\n  \"address\": \"456 Updated Industrial Ave\",\n  \"city\": \"Tech City\",\n  \"state\": \"CA\",\n  \"country\": \"USA\",\n  \"postalCode\": \"90210\",\n  \"latitude\": 34.0522,\n  \"longitude\": -118.2437,\n  \"businessLicense\": \"BL-2024-001\",\n  \"description\": \"Updated high-quality 3D printing filaments supplier\",\n  \"verified\": true,\n  \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Supplier",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Supplier by User ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/user/100",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "user", "100"]
+						}
+					}
+				},
+				{
+					"name": "Get Supplier by Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/email/info@premiumfilaments.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "email", "info@premiumfilaments.com"]
+						}
+					}
+				},
+				{
+					"name": "Get Suppliers by City",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/city/Tech City",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "city", "Tech City"]
+						}
+					}
+				},
+				{
+					"name": "Get Suppliers by State",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/state/CA",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "state", "CA"]
+						}
+					}
+				},
+				{
+					"name": "Get Suppliers by Country",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/country/USA",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "country", "USA"]
+						}
+					}
+				},
+				{
+					"name": "Search Suppliers by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/search?name=Premium",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "search"],
+							"query": [
+								{
+									"key": "name",
+									"value": "Premium"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Suppliers Within Radius",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/nearby?latitude=34.0522&longitude=-118.2437&radiusKm=50",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "nearby"],
+							"query": [
+								{
+									"key": "latitude",
+									"value": "34.0522"
+								},
+								{
+									"key": "longitude",
+									"value": "-118.2437"
+								},
+								{
+									"key": "radiusKm",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Verify Supplier",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1/verify",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1", "verify"]
+						}
+					}
+				},
+				{
+					"name": "Activate Supplier",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1/activate",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1", "activate"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Supplier",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suppliers/1/deactivate",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers", "1", "deactivate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Shops",
+			"item": [
+				{
+					"name": "Get All Shops",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops"]
+						}
+					}
+				},
+				{
+					"name": "Get Shop by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Shop",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sellerId\": 1,\n  \"name\": \"3D Print Hub\",\n  \"description\": \"Your one-stop shop for custom 3D printed items\",\n  \"address\": \"789 Maker Street, Innovation District\",\n  \"contactInfo\": \"contact@3dprinthub.com | +1-555-0456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shops",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops"]
+						}
+					}
+				},
+				{
+					"name": "Update Shop",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sellerId\": 1,\n  \"name\": \"Updated 3D Print Hub\",\n  \"description\": \"Your updated one-stop shop for custom 3D printed items\",\n  \"address\": \"789 Updated Maker Street, Innovation District\",\n  \"contactInfo\": \"contact@3dprinthub.com | +1-555-0456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shops/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Shop",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Shops by Seller ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/seller/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "seller", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get First Shop by Seller ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/seller/1/first",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "seller", "1", "first"]
+						}
+					}
+				},
+				{
+					"name": "Search Shops by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/search/name?name=3D Print",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "search", "name"],
+							"query": [
+								{
+									"key": "name",
+									"value": "3D Print"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Shops by Description",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/search/description?keyword=custom",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "search", "description"],
+							"query": [
+								{
+									"key": "keyword",
+									"value": "custom"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Shops by Address",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/search/address?address=Innovation",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "search", "address"],
+							"query": [
+								{
+									"key": "address",
+									"value": "Innovation"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Shops with Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/with-products",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "with-products"]
+						}
+					}
+				},
+				{
+					"name": "Count Products by Shop ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/1/products/count",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "1", "products", "count"]
+						}
+					}
+				},
+				{
+					"name": "Check if Shop Exists for Seller",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/exists/seller/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "exists", "seller", "1"]
+						}
+					}
+				},
+				{
+					"name": "Update Shop Info (Partial Update)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/1?name=New Shop Name&description=New Description",
+							"host": ["{{baseUrl}}"],
+							"path": ["shops", "1"],
+							"query": [
+								{
+									"key": "name",
+									"value": "New Shop Name"
+								},
+								{
+									"key": "description",
+									"value": "New Description"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Filament Stock",
+			"item": [
+				{
+					"name": "Get All Filament Stock",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock"]
+						}
+					}
+				},
+				{
+					"name": "Get Filament Stock by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Filament Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": 1,\n  \"materialType\": \"PLA\",\n  \"color\": \"Red\",\n  \"quantityKg\": 50.0,\n  \"reservedKg\": 0.0,\n  \"available\": true,\n  \"lastRestocked\": \"2024-01-15T10:00:00Z\",\n  \"expiryDate\": \"2025-01-15T10:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock"]
+						}
+					}
+				},
+				{
+					"name": "Update Filament Stock",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": 1,\n  \"materialType\": \"PLA\",\n  \"color\": \"Blue\",\n  \"quantityKg\": 75.0,\n  \"reservedKg\": 5.0,\n  \"available\": true,\n  \"lastRestocked\": \"2024-01-20T10:00:00Z\",\n  \"expiryDate\": \"2025-01-20T10:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Filament Stock",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Stock by Supplier ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/supplier/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "supplier", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Stock by Material Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/material-type/PLA",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "material-type", "PLA"]
+						}
+					}
+				},
+				{
+					"name": "Get Stock by Color",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/color/Red",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "color", "Red"]
+						}
+					}
+				},
+				{
+					"name": "Get Available Stock",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/available",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "available"]
+						}
+					}
+				},
+				{
+					"name": "Search Stock by Material and Color",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/search?materialType=PLA&color=Red",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "search"],
+							"query": [
+								{
+									"key": "materialType",
+									"value": "PLA"
+								},
+								{
+									"key": "color",
+									"value": "Red"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Stock with Sufficient Quantity",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/sufficient-quantity?requiredKg=10.0",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "sufficient-quantity"],
+							"query": [
+								{
+									"key": "requiredKg",
+									"value": "10.0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Low Stock Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/low-stock?threshold=5.0",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "low-stock"],
+							"query": [
+								{
+									"key": "threshold",
+									"value": "5.0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Expired Stock",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/expired",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "expired"]
+						}
+					}
+				},
+				{
+					"name": "Reserve Stock",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/1/reserve?quantityKg=5.0",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "1", "reserve"],
+							"query": [
+								{
+									"key": "quantityKg",
+									"value": "5.0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Release Reserved Stock",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock/1/release?quantityKg=2.0",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock", "1", "release"],
+							"query": [
+								{
+									"key": "quantityKg",
+									"value": "2.0"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Validation Test Cases",
+			"item": [
+				{
+					"name": "Create Product - Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Product without name and price\",\n  \"imageUrl\": \"https://example.com/image.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["products"]
+						},
+						"description": "Should return 400 Bad Request due to validation errors"
+					}
+				},
+				{
+					"name": "Create Supplier - Invalid Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Supplier\",\n  \"email\": \"invalid-email\",\n  \"address\": \"123 Test St\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suppliers",
+							"host": ["{{baseUrl}}"],
+							"path": ["suppliers"]
+						},
+						"description": "Should return 400 Bad Request due to invalid email format"
+					}
+				},
+				{
+					"name": "Create Filament Stock - Negative Quantity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"supplierId\": 1,\n  \"materialType\": \"PLA\",\n  \"color\": \"Red\",\n  \"quantityKg\": -10.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/filament-stock",
+							"host": ["{{baseUrl}}"],
+							"path": ["filament-stock"]
+						},
+						"description": "Should return 400 Bad Request due to negative quantity"
+					}
+				},
+				{
+					"name": "Get Product with Null ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/null",
+							"host": ["{{baseUrl}}"],
+							"path": ["products", "null"]
+						},
+						"description": "Should return 400 Bad Request due to path variable validation"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"description": "Base URL for the Product Service API"
+		}
+	]
+}
