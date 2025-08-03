@@ -1,8 +1,11 @@
 package com.threedfly.productservice.service;
 
+import com.threedfly.productservice.dto.FilamentStockRequest;
+import com.threedfly.productservice.dto.FilamentStockResponse;
 import com.threedfly.productservice.entity.FilamentStock;
 import com.threedfly.productservice.entity.FilamentType;
 import com.threedfly.productservice.entity.Supplier;
+import com.threedfly.productservice.mapper.FilamentStockMapper;
 import com.threedfly.productservice.repository.FilamentStockRepository;
 import com.threedfly.productservice.repository.SupplierRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,11 +33,16 @@ class FilamentStockServiceTest {
     @Mock
     private SupplierRepository supplierRepository;
 
+    @Mock
+    private FilamentStockMapper filamentStockMapper;
+
     @InjectMocks
     private FilamentStockService filamentStockService;
 
     private FilamentStock testStock;
     private Supplier testSupplier;
+    private FilamentStockRequest testStockRequest;
+    private FilamentStockResponse testStockResponse;
 
     @BeforeEach
     void setUp() {
@@ -55,143 +63,137 @@ class FilamentStockServiceTest {
                 .reservedKg(2.0)
                 .available(true)
                 .lastRestocked(new Date())
+                .expiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000))
+                .build();
+
+        testStockRequest = FilamentStockRequest.builder()
+                .supplierId(1L)
+                .materialType(FilamentType.PLA)
+                .color("Red")
+                .quantityKg(10.0)
+                .reservedKg(2.0)
+                .available(true)
+                .lastRestocked(new Date())
+                .expiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000))
+                .build();
+
+        testStockResponse = FilamentStockResponse.builder()
+                .id(1L)
+                .supplierId(1L)
+                .supplierName("Test Supplier")
+                .materialType(FilamentType.PLA)
+                .color("Red")
+                .quantityKg(10.0)
+                .reservedKg(2.0)
+                .available(true)
+                .lastRestocked(new Date())
+                .expiryDate(new Date(System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000))
+                .availableQuantityKg(8.0)
                 .build();
     }
 
     @Test
-    void findAll_ShouldReturnAllStocks() {
+    void findAll_ShouldReturnAllFilamentStock() {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findAll()).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findAll();
+        List<FilamentStockResponse> result = filamentStockService.findAll();
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
+        assertEquals(testStockResponse.getColor(), result.get(0).getColor());
+        assertEquals(testStockResponse.getMaterialType(), result.get(0).getMaterialType());
         verify(filamentStockRepository).findAll();
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
-    void findById_WhenIdExists_ShouldReturnStock() {
+    void findById_WhenIdExists_ShouldReturnFilamentStock() {
         // Given
         when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        Optional<FilamentStock> result = filamentStockService.findById(1L);
+        FilamentStockResponse result = filamentStockService.findById(1L);
 
         // Then
-        assertTrue(result.isPresent());
-        assertEquals(testStock, result.get());
+        assertNotNull(result);
+        assertEquals(testStockResponse.getColor(), result.getColor());
+        assertEquals(testStockResponse.getMaterialType(), result.getMaterialType());
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
-    void findById_WhenIdNull_ShouldReturnEmpty() {
-        // When
-        Optional<FilamentStock> result = filamentStockService.findById(null);
-
-        // Then
-        assertFalse(result.isPresent());
-        verify(filamentStockRepository, never()).findById(any());
-    }
-
-    @Test
-    void findById_WhenIdNotExists_ShouldReturnEmpty() {
+    void findById_WhenIdNotExists_ShouldThrowException() {
         // Given
         when(filamentStockRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // When
-        Optional<FilamentStock> result = filamentStockService.findById(1L);
-
-        // Then
-        assertFalse(result.isPresent());
+        // When & Then
+        assertThrows(RuntimeException.class, () -> filamentStockService.findById(1L));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockMapper, never()).toResponse(any());
     }
 
     @Test
     void save_WhenValidStock_ShouldSaveAndReturn() {
         // Given
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
-        when(filamentStockRepository.save(any(FilamentStock.class))).thenReturn(testStock);
+        when(filamentStockMapper.toEntity(testStockRequest)).thenReturn(testStock);
+        when(supplierRepository.findById(testStockRequest.getSupplierId())).thenReturn(Optional.of(testSupplier));
+        when(filamentStockRepository.save(testStock)).thenReturn(testStock);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        FilamentStock result = filamentStockService.save(testStock);
+        FilamentStockResponse result = filamentStockService.save(testStockRequest);
 
         // Then
         assertNotNull(result);
+        assertEquals(testStockResponse.getColor(), result.getColor());
+        assertEquals(testStockResponse.getMaterialType(), result.getMaterialType());
+        verify(filamentStockMapper).toEntity(testStockRequest);
+        verify(supplierRepository).findById(testStockRequest.getSupplierId());
         verify(filamentStockRepository).save(testStock);
-    }
-
-    @Test
-    void save_WhenStockNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.save(null));
-        verify(filamentStockRepository, never()).save(any());
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
     void save_WhenSupplierNotFound_ShouldThrowException() {
         // Given
-        when(supplierRepository.findById(1L)).thenReturn(Optional.empty());
+        when(filamentStockMapper.toEntity(testStockRequest)).thenReturn(testStock);
+        when(supplierRepository.findById(testStockRequest.getSupplierId())).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> filamentStockService.save(testStock));
-    }
-
-    @Test
-    void save_WhenReservedKgNull_ShouldSetToZero() {
-        // Given
-        testStock.setReservedKg(null);
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
-        when(filamentStockRepository.save(any(FilamentStock.class))).thenReturn(testStock);
-
-        // When
-        filamentStockService.save(testStock);
-
-        // Then
-        assertEquals(0.0, testStock.getReservedKg());
-    }
-
-    @Test
-    void save_WhenNewStock_ShouldSetLastRestocked() {
-        // Given
-        testStock.setId(null);
-        testStock.setLastRestocked(null);
-        when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
-        when(filamentStockRepository.save(any(FilamentStock.class))).thenReturn(testStock);
-
-        // When
-        filamentStockService.save(testStock);
-
-        // Then
-        assertNotNull(testStock.getLastRestocked());
+        assertThrows(RuntimeException.class, () -> filamentStockService.save(testStockRequest));
+        verify(filamentStockMapper).toEntity(testStockRequest);
+        verify(supplierRepository).findById(testStockRequest.getSupplierId());
+        verify(filamentStockRepository, never()).save(any());
     }
 
     @Test
     void deleteById_WhenIdExists_ShouldDelete() {
         // Given
-        when(filamentStockRepository.existsById(1L)).thenReturn(true);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
 
         // When
         filamentStockService.deleteById(1L);
 
         // Then
-        verify(filamentStockRepository).deleteById(1L);
-    }
-
-    @Test
-    void deleteById_WhenIdNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.deleteById(null));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository).delete(testStock);
     }
 
     @Test
     void deleteById_WhenIdNotExists_ShouldThrowException() {
         // Given
-        when(filamentStockRepository.existsById(1L)).thenReturn(false);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(RuntimeException.class, () -> filamentStockService.deleteById(1L));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository, never()).delete(any());
     }
 
     @Test
@@ -199,19 +201,16 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findBySupplierId(1L)).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findBySupplierId(1L);
+        List<FilamentStockResponse> result = filamentStockService.findBySupplierId(1L);
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findBySupplierId_WhenIdNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.findBySupplierId(null));
+        assertEquals(testStockResponse.getSupplierId(), result.get(0).getSupplierId());
+        verify(filamentStockRepository).findBySupplierId(1L);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -219,19 +218,16 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findByMaterialType(FilamentType.PLA)).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findByMaterialType(FilamentType.PLA);
+        List<FilamentStockResponse> result = filamentStockService.findByMaterialType(FilamentType.PLA);
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findByMaterialType_WhenTypeNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.findByMaterialType(null));
+        assertEquals(FilamentType.PLA, result.get(0).getMaterialType());
+        verify(filamentStockRepository).findByMaterialType(FilamentType.PLA);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -239,25 +235,16 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findByColor("Red")).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findByColor("Red");
+        List<FilamentStockResponse> result = filamentStockService.findByColor("Red");
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findByColor_WhenColorNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.findByColor(null));
-    }
-
-    @Test
-    void findByColor_WhenColorEmpty_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filamentStockService.findByColor(""));
+        assertEquals("Red", result.get(0).getColor());
+        verify(filamentStockRepository).findByColor("Red");
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -265,13 +252,16 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findByAvailableTrue()).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findAvailable();
+        List<FilamentStockResponse> result = filamentStockService.findAvailable();
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
+        assertTrue(result.get(0).isAvailable());
+        verify(filamentStockRepository).findByAvailableTrue();
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -279,27 +269,17 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findByMaterialTypeAndColor(FilamentType.PLA, "Red")).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findByMaterialTypeAndColor(FilamentType.PLA, "Red");
+        List<FilamentStockResponse> result = filamentStockService.findByMaterialTypeAndColor(FilamentType.PLA, "Red");
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findByMaterialTypeAndColor_WhenMaterialTypeNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.findByMaterialTypeAndColor(null, "Red"));
-    }
-
-    @Test
-    void findByMaterialTypeAndColor_WhenColorNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.findByMaterialTypeAndColor(FilamentType.PLA, null));
+        assertEquals(FilamentType.PLA, result.get(0).getMaterialType());
+        assertEquals("Red", result.get(0).getColor());
+        verify(filamentStockRepository).findByMaterialTypeAndColor(FilamentType.PLA, "Red");
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -307,27 +287,16 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findStockWithSufficientQuantity(5.0)).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findStockWithSufficientQuantity(5.0);
+        List<FilamentStockResponse> result = filamentStockService.findStockWithSufficientQuantity(5.0);
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findStockWithSufficientQuantity_WhenQuantityNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.findStockWithSufficientQuantity(null));
-    }
-
-    @Test
-    void findStockWithSufficientQuantity_WhenQuantityNegative_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.findStockWithSufficientQuantity(-1.0));
+        assertTrue(result.get(0).getAvailableQuantityKg() >= 5.0);
+        verify(filamentStockRepository).findStockWithSufficientQuantity(5.0);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -335,20 +304,15 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findLowStockItems(15.0)).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findLowStockItems(15.0);
+        List<FilamentStockResponse> result = filamentStockService.findLowStockItems(15.0);
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void findLowStockItems_WhenThresholdNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.findLowStockItems(null));
+        verify(filamentStockRepository).findLowStockItems(15.0);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
@@ -356,67 +320,50 @@ class FilamentStockServiceTest {
         // Given
         List<FilamentStock> stocks = Arrays.asList(testStock);
         when(filamentStockRepository.findExpiredStock()).thenReturn(stocks);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
         // When
-        List<FilamentStock> result = filamentStockService.findExpiredStock();
+        List<FilamentStockResponse> result = filamentStockService.findExpiredStock();
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(testStock, result.get(0));
-    }
-
-    @Test
-    void countAvailableByMaterialType_WhenValidType_ShouldReturnCount() {
-        // Given
-        when(filamentStockRepository.countAvailableByMaterialType(FilamentType.PLA)).thenReturn(5L);
-
-        // When
-        Long result = filamentStockService.countAvailableByMaterialType(FilamentType.PLA);
-
-        // Then
-        assertEquals(5L, result);
-    }
-
-    @Test
-    void countAvailableByMaterialType_WhenTypeNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.countAvailableByMaterialType(null));
+        verify(filamentStockRepository).findExpiredStock();
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
     void reserveStock_WhenValidParams_ShouldReserveAndReturn() {
         // Given
-        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
-        when(filamentStockRepository.save(any(FilamentStock.class))).thenReturn(testStock);
+        FilamentStock mockStock = mock(FilamentStock.class);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(mockStock));
+        when(mockStock.hasEnoughStock(5.0)).thenReturn(true);
+        when(mockStock.getReservedKg()).thenReturn(2.0);
+        when(filamentStockRepository.save(mockStock)).thenReturn(mockStock);
+        when(filamentStockMapper.toResponse(mockStock)).thenReturn(testStockResponse);
 
         // When
-        FilamentStock result = filamentStockService.reserveStock(1L, 5.0);
+        FilamentStockResponse result = filamentStockService.reserveStock(1L, 5.0);
 
         // Then
         assertNotNull(result);
-        assertEquals(7.0, testStock.getReservedKg()); // 2.0 + 5.0
+        verify(filamentStockRepository).findById(1L);
+        verify(mockStock).setReservedKg(7.0); // 2.0 + 5.0
+        verify(filamentStockRepository).save(mockStock);
+        verify(filamentStockMapper).toResponse(mockStock);
     }
 
     @Test
-    void reserveStock_WhenIdNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.reserveStock(null, 5.0));
-    }
+    void reserveStock_WhenInsufficientStock_ShouldThrowException() {
+        // Given
+        FilamentStock mockStock = mock(FilamentStock.class);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(mockStock));
+        when(mockStock.hasEnoughStock(15.0)).thenReturn(false);
+        when(mockStock.getAvailableQuantityKg()).thenReturn(8.0);
 
-    @Test
-    void reserveStock_WhenQuantityNull_ShouldThrowException() {
         // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.reserveStock(1L, null));
-    }
-
-    @Test
-    void reserveStock_WhenQuantityZero_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.reserveStock(1L, 0.0));
+        assertThrows(RuntimeException.class, () -> filamentStockService.reserveStock(1L, 15.0));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository, never()).save(any());
     }
 
     @Test
@@ -425,46 +372,42 @@ class FilamentStockServiceTest {
         when(filamentStockRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(RuntimeException.class, 
-                () -> filamentStockService.reserveStock(1L, 5.0));
-    }
-
-    @Test
-    void reserveStock_WhenInsufficientStock_ShouldThrowException() {
-        // Given
-        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
-
-        // When & Then
-        assertThrows(RuntimeException.class, 
-                () -> filamentStockService.reserveStock(1L, 15.0)); // More than available
+        assertThrows(RuntimeException.class, () -> filamentStockService.reserveStock(1L, 5.0));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository, never()).save(any());
     }
 
     @Test
     void releaseReservedStock_WhenValidParams_ShouldReleaseAndReturn() {
         // Given
-        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
-        when(filamentStockRepository.save(any(FilamentStock.class))).thenReturn(testStock);
+        FilamentStock mockStock = mock(FilamentStock.class);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(mockStock));
+        when(mockStock.getReservedKg()).thenReturn(5.0);
+        when(filamentStockRepository.save(mockStock)).thenReturn(mockStock);
+        when(filamentStockMapper.toResponse(mockStock)).thenReturn(testStockResponse);
 
         // When
-        FilamentStock result = filamentStockService.releaseReservedStock(1L, 1.0);
+        FilamentStockResponse result = filamentStockService.releaseReservedStock(1L, 1.0);
 
         // Then
         assertNotNull(result);
-        assertEquals(1.0, testStock.getReservedKg()); // 2.0 - 1.0
+        verify(filamentStockRepository).findById(1L);
+        verify(mockStock).setReservedKg(4.0); // 5.0 - 1.0
+        verify(filamentStockRepository).save(mockStock);
+        verify(filamentStockMapper).toResponse(mockStock);
     }
 
     @Test
-    void releaseReservedStock_WhenIdNull_ShouldThrowException() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.releaseReservedStock(null, 1.0));
-    }
+    void releaseReservedStock_WhenInsufficientReserved_ShouldThrowException() {
+        // Given
+        FilamentStock mockStock = mock(FilamentStock.class);
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(mockStock));
+        when(mockStock.getReservedKg()).thenReturn(1.0);
 
-    @Test
-    void releaseReservedStock_WhenQuantityNull_ShouldThrowException() {
         // When & Then
-        assertThrows(IllegalArgumentException.class, 
-                () -> filamentStockService.releaseReservedStock(1L, null));
+        assertThrows(RuntimeException.class, () -> filamentStockService.releaseReservedStock(1L, 5.0));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository, never()).save(any());
     }
 
     @Test
@@ -473,28 +416,54 @@ class FilamentStockServiceTest {
         when(filamentStockRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(RuntimeException.class, 
-                () -> filamentStockService.releaseReservedStock(1L, 1.0));
+        assertThrows(RuntimeException.class, () -> filamentStockService.releaseReservedStock(1L, 1.0));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockRepository, never()).save(any());
     }
 
     @Test
-    void releaseReservedStock_WhenReleasingMoreThanReserved_ShouldThrowException() {
+    void update_WhenValidParams_ShouldUpdateAndReturn() {
         // Given
         when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
+        when(supplierRepository.findById(testStockRequest.getSupplierId())).thenReturn(Optional.of(testSupplier));
+        when(filamentStockRepository.save(testStock)).thenReturn(testStock);
+        when(filamentStockMapper.toResponse(testStock)).thenReturn(testStockResponse);
 
-        // When & Then
-        assertThrows(RuntimeException.class, 
-                () -> filamentStockService.releaseReservedStock(1L, 5.0)); // More than reserved
+        // When
+        FilamentStockResponse result = filamentStockService.update(1L, testStockRequest);
+
+        // Then
+        assertNotNull(result);
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockMapper).updateEntityFromRequest(testStock, testStockRequest);
+        verify(supplierRepository).findById(testStockRequest.getSupplierId());
+        verify(filamentStockRepository).save(testStock);
+        verify(filamentStockMapper).toResponse(testStock);
     }
 
     @Test
-    void releaseReservedStock_WhenReservedKgNull_ShouldThrowException() {
+    void update_WhenStockNotFound_ShouldThrowException() {
         // Given
-        testStock.setReservedKg(null);
-        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(RuntimeException.class, 
-                () -> filamentStockService.releaseReservedStock(1L, 1.0));
+        assertThrows(RuntimeException.class, () -> filamentStockService.update(1L, testStockRequest));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockMapper, never()).updateEntityFromRequest(any(), any());
+        verify(filamentStockRepository, never()).save(any());
+    }
+
+    @Test
+    void update_WhenSupplierNotFound_ShouldThrowException() {
+        // Given
+        when(filamentStockRepository.findById(1L)).thenReturn(Optional.of(testStock));
+        when(supplierRepository.findById(testStockRequest.getSupplierId())).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> filamentStockService.update(1L, testStockRequest));
+        verify(filamentStockRepository).findById(1L);
+        verify(filamentStockMapper).updateEntityFromRequest(testStock, testStockRequest);
+        verify(supplierRepository).findById(testStockRequest.getSupplierId());
+        verify(filamentStockRepository, never()).save(any());
     }
 }

@@ -1,6 +1,9 @@
 package com.threedfly.productservice.service;
 
+import com.threedfly.productservice.dto.ShopRequest;
+import com.threedfly.productservice.dto.ShopResponse;
 import com.threedfly.productservice.entity.Shop;
+import com.threedfly.productservice.mapper.ShopMapper;
 import com.threedfly.productservice.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -17,102 +20,93 @@ import java.util.Optional;
 public class ShopService {
     
     private final ShopRepository shopRepository;
+    private final ShopMapper shopMapper;
     
-    public List<Shop> findAll() {
+    public List<ShopResponse> findAll() {
         log.info("Finding all shops");
-        return shopRepository.findAll();
+        return shopRepository.findAll()
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public Optional<Shop> findById(Long id) {
+    public ShopResponse findById(Long id) {
         log.info("Finding shop by id: {}", id);
-
-        if (id == null) {
-            return Optional.empty();
-        }
-        return shopRepository.findById(id);
+        
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shop not found with ID: " + id));
+        
+        return shopMapper.toResponse(shop);
     }
     
-    public Shop save(Shop shop) {
-        log.info("Saving shop: {}", shop);
-        if (shop == null) {
-            throw new IllegalArgumentException("Shop cannot be null");
-        }
+    public ShopResponse save(ShopRequest request) {
+        log.info("Saving shop: {}", request);
         
-        // Validate required fields
-        if (shop.getName() == null || shop.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Shop name is required");
-        }
-        
-        if (shop.getSellerId() == null) {
-            throw new IllegalArgumentException("Seller ID is required");
-        }
-        
-        return shopRepository.save(shop);
+        Shop shop = shopMapper.toEntity(request);
+        Shop savedShop = shopRepository.save(shop);
+        return shopMapper.toResponse(savedShop);
     }
     
     public void deleteById(Long id) {
         log.info("Deleting shop by id: {}", id);
-        if (id == null) {
-            throw new IllegalArgumentException("ID cannot be null");
-        }
         
-        if (!shopRepository.existsById(id)) {
-            throw new RuntimeException("Shop not found with ID: " + id);
-        }
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shop not found with ID: " + id));
         
-        shopRepository.deleteById(id);
+        shopRepository.delete(shop);
     }
     
-    public List<Shop> findBySellerId(Long sellerId) {
+    public List<ShopResponse> findBySellerId(Long sellerId) {
         log.info("Finding shops by seller id: {}", sellerId);
-        if (sellerId == null) {
-            throw new IllegalArgumentException("Seller ID cannot be null");
-        }
-        return shopRepository.findBySellerId(sellerId);
+        return shopRepository.findBySellerId(sellerId)
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public Optional<Shop> findFirstBySellerId(Long sellerId) {
+    public ShopResponse findFirstBySellerId(Long sellerId) {
         log.info("Finding first shop by seller id: {}", sellerId);
-        if (sellerId == null) {
-            return Optional.empty();
-        }
-        return shopRepository.findFirstBySellerId(sellerId);
+        
+        Shop shop = shopRepository.findFirstBySellerId(sellerId)
+                .orElseThrow(() -> new RuntimeException("Shop not found for seller ID: " + sellerId));
+        
+        return shopMapper.toResponse(shop);
     }
     
-    public List<Shop> searchByName(String name) {
+    public List<ShopResponse> searchByName(String name) {
         log.info("Searching shops by name: {}", name);
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be null or empty");
-        }
-        return shopRepository.findByNameContainingIgnoreCase(name);
+        return shopRepository.findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<Shop> searchByDescription(String keyword) {
+    public List<ShopResponse> searchByDescription(String keyword) {
         log.info("Searching shops by description keyword: {}", keyword);
-        if (keyword == null || keyword.trim().isEmpty()) {
-            throw new IllegalArgumentException("Keyword cannot be null or empty");
-        }
-        return shopRepository.findByDescriptionContainingIgnoreCase(keyword);
+        return shopRepository.findByDescriptionContainingIgnoreCase(keyword)
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<Shop> searchByAddress(String address) {
+    public List<ShopResponse> searchByAddress(String address) {
         log.info("Searching shops by address: {}", address);
-        if (address == null || address.trim().isEmpty()) {
-            throw new IllegalArgumentException("Address cannot be null or empty");
-        }
-        return shopRepository.findByAddressContainingIgnoreCase(address);
+        return shopRepository.findByAddressContainingIgnoreCase(address)
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<Shop> findShopsWithProducts() {
+    public List<ShopResponse> findShopsWithProducts() {
         log.info("Finding shops with products");
-        return shopRepository.findShopsWithProducts();
+        return shopRepository.findShopsWithProducts()
+                .stream()
+                .map(shopMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
     public Long countProductsByShopId(Long shopId) {
         log.info("Counting products for shop id: {}", shopId);
-        if (shopId == null) {
-            throw new IllegalArgumentException("Shop ID cannot be null");
-        }
         
         // Verify shop exists
         if (!shopRepository.existsById(shopId)) {
@@ -124,17 +118,22 @@ public class ShopService {
     
     public boolean existsBySellerId(Long sellerId) {
         log.info("Checking if shop exists for seller id: {}", sellerId);
-        if (sellerId == null) {
-            return false;
-        }
         return shopRepository.existsBySellerId(sellerId);
     }
     
-    public Shop updateShopInfo(Long id, String name, String description, String address, String contactInfo) {
+    public ShopResponse update(Long id, ShopRequest request) {
+        log.info("Updating shop with id: {}", id);
+        
+        Shop existingShop = shopRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shop not found with ID: " + id));
+        
+        shopMapper.updateEntityFromRequest(existingShop, request);
+        Shop savedShop = shopRepository.save(existingShop);
+        return shopMapper.toResponse(savedShop);
+    }
+    
+    public ShopResponse updateShopInfo(Long id, String name, String description, String address, String contactInfo) {
         log.info("Updating shop info for id: {}", id);
-        if (id == null) {
-            throw new IllegalArgumentException("ID cannot be null");
-        }
         
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Shop not found with ID: " + id));
@@ -155,6 +154,7 @@ public class ShopService {
             shop.setContactInfo(contactInfo);
         }
         
-        return shopRepository.save(shop);
+        Shop savedShop = shopRepository.save(shop);
+        return shopMapper.toResponse(savedShop);
     }
 }

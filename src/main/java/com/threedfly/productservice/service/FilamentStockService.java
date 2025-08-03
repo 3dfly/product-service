@@ -1,8 +1,11 @@
 package com.threedfly.productservice.service;
 
+import com.threedfly.productservice.dto.FilamentStockRequest;
+import com.threedfly.productservice.dto.FilamentStockResponse;
 import com.threedfly.productservice.entity.FilamentStock;
 import com.threedfly.productservice.entity.FilamentType;
 import com.threedfly.productservice.entity.Supplier;
+import com.threedfly.productservice.mapper.FilamentStockMapper;
 import com.threedfly.productservice.repository.FilamentStockRepository;
 import com.threedfly.productservice.repository.SupplierRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,137 +25,145 @@ public class FilamentStockService {
     
     private final FilamentStockRepository filamentStockRepository;
     private final SupplierRepository supplierRepository;
+    private final FilamentStockMapper filamentStockMapper;
     
-    public List<FilamentStock> findAll() {
+    public List<FilamentStockResponse> findAll() {
         log.info("Finding all filament stock");
-        return filamentStockRepository.findAll();
+        return filamentStockRepository.findAll()
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public Optional<FilamentStock> findById(Long id) {
+    public FilamentStockResponse findById(Long id) {
         log.info("Finding filament stock by id: {}", id);
-        if (id == null) {
-            return Optional.empty();
-        }
-        return filamentStockRepository.findById(id);
+        
+        FilamentStock filamentStock = filamentStockRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("FilamentStock not found with ID: " + id));
+        
+        return filamentStockMapper.toResponse(filamentStock);
     }
     
-    public FilamentStock save(FilamentStock filamentStock) {
-        log.info("Saving filament stock: {}", filamentStock);
-        if (filamentStock == null) {
-            throw new IllegalArgumentException("FilamentStock cannot be null");
-        }
+    public FilamentStockResponse save(FilamentStockRequest request) {
+        log.info("Saving filament stock: {}", request);
         
-        // Validate supplier exists if supplier ID is provided
-        if (filamentStock.getSupplier() != null && filamentStock.getSupplier().getId() != null) {
-            Supplier supplier = supplierRepository.findById(filamentStock.getSupplier().getId())
-                    .orElseThrow(() -> new RuntimeException("Supplier not found with ID: " + filamentStock.getSupplier().getId()));
-            filamentStock.setSupplier(supplier);
-        }
+        FilamentStock filamentStock = filamentStockMapper.toEntity(request);
+        
+        // Set supplier
+        Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                .orElseThrow(() -> new RuntimeException("Supplier not found with ID: " + request.getSupplierId()));
+        filamentStock.setSupplier(supplier);
         
         // Set default values
         if (filamentStock.getReservedKg() == null) {
             filamentStock.setReservedKg(0.0);
         }
         
-        // Set last restocked date for new stock or when quantity increases
-        if (filamentStock.getId() == null || 
-            (filamentStock.getId() != null && hasQuantityIncreased(filamentStock))) {
-            filamentStock.setLastRestocked(new Date());
-        }
+        // Set last restocked date for new stock
+        filamentStock.setLastRestocked(new Date());
         
-        return filamentStockRepository.save(filamentStock);
+        FilamentStock savedStock = filamentStockRepository.save(filamentStock);
+        return filamentStockMapper.toResponse(savedStock);
+    }
+    
+    public FilamentStockResponse update(Long id, FilamentStockRequest request) {
+        log.info("Updating filament stock with id: {}", id);
+        
+        FilamentStock existingStock = filamentStockRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("FilamentStock not found with ID: " + id));
+        
+        // Update fields from request
+        filamentStockMapper.updateEntityFromRequest(existingStock, request);
+        
+        // Set supplier
+        Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                .orElseThrow(() -> new RuntimeException("Supplier not found with ID: " + request.getSupplierId()));
+        existingStock.setSupplier(supplier);
+        
+        FilamentStock savedStock = filamentStockRepository.save(existingStock);
+        return filamentStockMapper.toResponse(savedStock);
     }
     
     public void deleteById(Long id) {
         log.info("Deleting filament stock by id: {}", id);
-        if (id == null) {
-            throw new IllegalArgumentException("ID cannot be null");
-        }
         
-        if (!filamentStockRepository.existsById(id)) {
-            throw new RuntimeException("FilamentStock not found with ID: " + id);
-        }
+        FilamentStock filamentStock = filamentStockRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("FilamentStock not found with ID: " + id));
         
-        filamentStockRepository.deleteById(id);
+        filamentStockRepository.delete(filamentStock);
     }
     
-    public List<FilamentStock> findBySupplierId(Long supplierId) {
+    public List<FilamentStockResponse> findBySupplierId(Long supplierId) {
         log.info("Finding filament stock by supplier id: {}", supplierId);
-        if (supplierId == null) {
-            throw new IllegalArgumentException("Supplier ID cannot be null");
-        }
-        return filamentStockRepository.findBySupplierId(supplierId);
+        return filamentStockRepository.findBySupplierId(supplierId)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findByMaterialType(FilamentType materialType) {
+    public List<FilamentStockResponse> findByMaterialType(FilamentType materialType) {
         log.info("Finding filament stock by material type: {}", materialType);
-        if (materialType == null) {
-            throw new IllegalArgumentException("Material type cannot be null");
-        }
-        return filamentStockRepository.findByMaterialType(materialType);
+        return filamentStockRepository.findByMaterialType(materialType)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findByColor(String color) {
+    public List<FilamentStockResponse> findByColor(String color) {
         log.info("Finding filament stock by color: {}", color);
-        if (color == null || color.trim().isEmpty()) {
-            throw new IllegalArgumentException("Color cannot be null or empty");
-        }
-        return filamentStockRepository.findByColor(color);
+        return filamentStockRepository.findByColor(color)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findAvailable() {
+    public List<FilamentStockResponse> findAvailable() {
         log.info("Finding available filament stock");
-        return filamentStockRepository.findByAvailableTrue();
+        return filamentStockRepository.findByAvailableTrue()
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findByMaterialTypeAndColor(FilamentType materialType, String color) {
+    public List<FilamentStockResponse> findByMaterialTypeAndColor(FilamentType materialType, String color) {
         log.info("Finding filament stock by material type: {} and color: {}", materialType, color);
-        if (materialType == null) {
-            throw new IllegalArgumentException("Material type cannot be null");
-        }
-        if (color == null || color.trim().isEmpty()) {
-            throw new IllegalArgumentException("Color cannot be null or empty");
-        }
-        return filamentStockRepository.findByMaterialTypeAndColor(materialType, color);
+        return filamentStockRepository.findByMaterialTypeAndColor(materialType, color)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findStockWithSufficientQuantity(Double requiredKg) {
+    public List<FilamentStockResponse> findStockWithSufficientQuantity(Double requiredKg) {
         log.info("Finding filament stock with sufficient quantity: {} kg", requiredKg);
-        if (requiredKg == null || requiredKg < 0) {
-            throw new IllegalArgumentException("Required quantity must be non-negative");
-        }
-        return filamentStockRepository.findStockWithSufficientQuantity(requiredKg);
+        return filamentStockRepository.findStockWithSufficientQuantity(requiredKg)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findLowStockItems(Double threshold) {
+    public List<FilamentStockResponse> findLowStockItems(Double threshold) {
         log.info("Finding low stock items below threshold: {} kg", threshold);
-        if (threshold == null || threshold < 0) {
-            throw new IllegalArgumentException("Threshold must be non-negative");
-        }
-        return filamentStockRepository.findLowStockItems(threshold);
+        return filamentStockRepository.findLowStockItems(threshold)
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
-    public List<FilamentStock> findExpiredStock() {
+    public List<FilamentStockResponse> findExpiredStock() {
         log.info("Finding expired filament stock");
-        return filamentStockRepository.findExpiredStock();
+        return filamentStockRepository.findExpiredStock()
+                .stream()
+                .map(filamentStockMapper::toResponse)
+                .collect(Collectors.toList());
     }
     
     public Long countAvailableByMaterialType(FilamentType materialType) {
         log.info("Counting available stock by material type: {}", materialType);
-        if (materialType == null) {
-            throw new IllegalArgumentException("Material type cannot be null");
-        }
         return filamentStockRepository.countAvailableByMaterialType(materialType);
     }
     
-    public FilamentStock reserveStock(Long id, Double quantityKg) {
+    public FilamentStockResponse reserveStock(Long id, Double quantityKg) {
         log.info("Reserving {} kg from filament stock id: {}", quantityKg, id);
-        if (id == null) {
-            throw new IllegalArgumentException("ID cannot be null");
-        }
-        if (quantityKg == null || quantityKg <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
-        }
         
         FilamentStock stock = filamentStockRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("FilamentStock not found with ID: " + id));
@@ -163,17 +174,12 @@ public class FilamentStockService {
         }
         
         stock.setReservedKg(stock.getReservedKg() + quantityKg);
-        return filamentStockRepository.save(stock);
+        FilamentStock savedStock = filamentStockRepository.save(stock);
+        return filamentStockMapper.toResponse(savedStock);
     }
     
-    public FilamentStock releaseReservedStock(Long id, Double quantityKg) {
+    public FilamentStockResponse releaseReservedStock(Long id, Double quantityKg) {
         log.info("Releasing {} kg from reserved stock id: {}", quantityKg, id);
-        if (id == null) {
-            throw new IllegalArgumentException("ID cannot be null");
-        }
-        if (quantityKg == null || quantityKg <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
-        }
         
         FilamentStock stock = filamentStockRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("FilamentStock not found with ID: " + id));
@@ -185,21 +191,8 @@ public class FilamentStockService {
         }
         
         stock.setReservedKg(currentReserved - quantityKg);
-        return filamentStockRepository.save(stock);
+        FilamentStock savedStock = filamentStockRepository.save(stock);
+        return filamentStockMapper.toResponse(savedStock);
     }
-    
-    private boolean hasQuantityIncreased(FilamentStock filamentStock) {
-        if (filamentStock.getId() == null) {
-            return true; // New stock
-        }
-        
-        Optional<FilamentStock> existing = filamentStockRepository.findById(filamentStock.getId());
-        if (existing.isPresent()) {
-            Double existingQuantity = existing.get().getQuantityKg();
-            Double newQuantity = filamentStock.getQuantityKg();
-            return newQuantity != null && existingQuantity != null && newQuantity > existingQuantity;
-        }
-        
-        return false;
-    }
+
 }
