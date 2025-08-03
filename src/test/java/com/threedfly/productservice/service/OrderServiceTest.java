@@ -27,6 +27,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.withSettings;
+
+import com.threedfly.productservice.exception.SupplierNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -123,25 +126,11 @@ class OrderServiceTest {
 
     private com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection createMockProjection(Supplier supplier, Double distance) {
         // Create a mock projection for the supplier with distance
+        // Since we're using supplierMapper.fromProjection(), we only need the distance for assertions
         com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection mockProjection = 
-                mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class);
+                mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class, withSettings().lenient());
         
-        when(mockProjection.getId()).thenReturn(supplier.getId());
-        when(mockProjection.getUserId()).thenReturn(supplier.getUserId());
-        when(mockProjection.getName()).thenReturn(supplier.getName());
-        when(mockProjection.getEmail()).thenReturn(supplier.getEmail());
-        when(mockProjection.getPhone()).thenReturn(supplier.getPhone());
-        when(mockProjection.getAddress()).thenReturn(supplier.getAddress());
-        when(mockProjection.getCity()).thenReturn(supplier.getCity());
-        when(mockProjection.getState()).thenReturn(supplier.getState());
-        when(mockProjection.getCountry()).thenReturn(supplier.getCountry());
-        when(mockProjection.getPostalCode()).thenReturn(supplier.getPostalCode());
-        when(mockProjection.getLatitude()).thenReturn(supplier.getLatitude());
-        when(mockProjection.getLongitude()).thenReturn(supplier.getLongitude());
-        when(mockProjection.getBusinessLicense()).thenReturn(supplier.getBusinessLicense());
-        when(mockProjection.getDescription()).thenReturn(supplier.getDescription());
-        when(mockProjection.getVerified()).thenReturn(supplier.isVerified());
-        when(mockProjection.getActive()).thenReturn(supplier.isActive());
+        // Only mock the distance as it's used in assertions, mapper handles the rest
         when(mockProjection.getDistanceKm()).thenReturn(distance);
         
         return mockProjection;
@@ -157,6 +146,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Red"), eq(5.0)))
                 .thenReturn(nearSupplierStock);
@@ -192,6 +182,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Red"), eq(5.0)))
                 .thenReturn(nearSupplierStock);
@@ -218,7 +209,7 @@ class OrderServiceTest {
                 .thenReturn(Optional.empty());
 
         // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        SupplierNotFoundException exception = assertThrows(SupplierNotFoundException.class, () -> {
             orderService.findClosestSupplier(testOrderRequest);
         });
         
@@ -239,7 +230,7 @@ class OrderServiceTest {
                 .thenReturn(Optional.empty());
 
         // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        SupplierNotFoundException exception = assertThrows(SupplierNotFoundException.class, () -> {
             orderService.findClosestSupplier(testOrderRequest);
         });
         
@@ -262,6 +253,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection)); // Returns only suppliers with sufficient stock
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Red"), eq(5.0)))
                 .thenReturn(sufficientStock);
@@ -300,6 +292,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(sameLocationSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Red"), eq(5.0)))
                 .thenReturn(stock);
@@ -327,6 +320,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(15.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Red"), eq(15.0)))
                 .thenReturn(stock);
@@ -357,6 +351,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("ABS"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.ABS), eq("Red"), eq(5.0)))
                 .thenReturn(stock);
@@ -384,6 +379,7 @@ class OrderServiceTest {
         when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Blue"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
+        when(supplierMapper.fromProjection(mockProjection)).thenReturn(nearSupplier);
         when(filamentStockRepository.findBestAvailableStockForSupplier(
                 eq(1L), eq(FilamentType.PLA), eq("Blue"), eq(5.0)))
                 .thenReturn(stock);

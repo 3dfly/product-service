@@ -6,6 +6,8 @@ import com.threedfly.productservice.dto.OrderRequest;
 import com.threedfly.productservice.dto.SupplierResponse;
 import com.threedfly.productservice.entity.FilamentStock;
 import com.threedfly.productservice.entity.Supplier;
+import com.threedfly.productservice.exception.StockDataInconsistencyException;
+import com.threedfly.productservice.exception.SupplierNotFoundException;
 import com.threedfly.productservice.mapper.FilamentStockMapper;
 import com.threedfly.productservice.mapper.SupplierMapper;
 import com.threedfly.productservice.repository.FilamentStockRepository;
@@ -45,7 +47,8 @@ public class OrderService {
      * 
      * @param orderRequest The order details including buyer location and requirements
      * @return ClosestSupplierResponse with the best supplier (always successful)
-     * @throws RuntimeException if no supplier is found with sufficient stock
+     * @throws SupplierNotFoundException if no supplier is found with sufficient stock
+     * @throws StockDataInconsistencyException if stock data integrity issues occur
      */
     public ClosestSupplierResponse findClosestSupplier(OrderRequest orderRequest) {
         log.info("Finding closest supplier for material: {}, color: {}, quantity: {} kg, buyer location: ({}, {})",
@@ -63,33 +66,18 @@ public class OrderService {
                 );
         
         if (supplierProjection.isEmpty()) {
-            String errorMessage = String.format("No supplier found with sufficient stock for %s %s (required: %.1f kg)", 
-                    orderRequest.getMaterialType(), orderRequest.getColor(), orderRequest.getRequiredQuantityKg());
             log.warn("No supplier found - Material: {}, Color: {}, Quantity: {} kg", 
                     orderRequest.getMaterialType(), orderRequest.getColor(), orderRequest.getRequiredQuantityKg());
-            throw new RuntimeException(errorMessage);
+            throw SupplierNotFoundException.forMaterialRequirement(
+                    orderRequest.getMaterialType().name(), 
+                    orderRequest.getColor(), 
+                    orderRequest.getRequiredQuantityKg()
+            );
         }
         
-        // Convert projection to Supplier entity for mapper compatibility
+        // Convert projection to Supplier entity using clean mapper method
         var projection = supplierProjection.get();
-        Supplier closestSupplier = Supplier.builder()
-                .id(projection.getId())
-                .userId(projection.getUserId())
-                .name(projection.getName())
-                .email(projection.getEmail())
-                .phone(projection.getPhone())
-                .address(projection.getAddress())
-                .city(projection.getCity())
-                .state(projection.getState())
-                .country(projection.getCountry())
-                .postalCode(projection.getPostalCode())
-                .latitude(projection.getLatitude())
-                .longitude(projection.getLongitude())
-                .businessLicense(projection.getBusinessLicense())
-                .description(projection.getDescription())
-                .verified(projection.getVerified())
-                .active(projection.getActive())
-                .build();
+        Supplier closestSupplier = supplierMapper.fromProjection(projection);
         
         // Get the stock information (we know it exists from the JOIN)
         Optional<FilamentStock> stockOptional = findBestAvailableStock(
@@ -101,11 +89,9 @@ public class OrderService {
         
         if (stockOptional.isEmpty()) {
             // This should not happen due to the JOIN, but handle gracefully
-            String errorMessage = String.format("Stock information unavailable for supplier %d - data consistency issue", 
-                    closestSupplier.getId());
             log.error("Stock not found for supplier {} despite JOIN query - this indicates a data consistency issue", 
                     closestSupplier.getId());
-            throw new RuntimeException(errorMessage);
+            throw StockDataInconsistencyException.forSupplier(closestSupplier.getId());
         }
         
         SupplierResponse supplierResponse = supplierMapper.toResponse(closestSupplier);

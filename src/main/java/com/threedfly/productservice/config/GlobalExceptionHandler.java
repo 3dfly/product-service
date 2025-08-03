@@ -1,5 +1,9 @@
 package com.threedfly.productservice.config;
 
+import com.threedfly.productservice.exception.BaseException;
+import com.threedfly.productservice.exception.ErrorResponse;
+import com.threedfly.productservice.exception.StockDataInconsistencyException;
+import com.threedfly.productservice.exception.SupplierNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +19,16 @@ import java.util.Map;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    // Custom business exceptions
+
+    @ExceptionHandler(BaseException.class)
+    public ResponseEntity<ErrorResponse> handleBaseException(BaseException ex) {
+        // Logging is handled by the exception itself
+        return ResponseEntity.status(ex.getStatus()).body(ex.toErrorResponse());
+    }
+
+    // General exceptions
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException e) {

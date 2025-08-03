@@ -20,6 +20,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.threedfly.productservice.exception.SupplierNotFoundException;
+
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
 
@@ -96,16 +98,21 @@ class OrderControllerTest {
     }
 
     @Test
-    void findClosestSupplier_WhenNoSupplierFound_ShouldReturnInternalServerError() throws Exception {
+    void findClosestSupplier_WhenNoSupplierFound_ShouldReturnNotFound() throws Exception {
         // Given
         when(orderService.findClosestSupplier(any(OrderRequest.class)))
-            .thenThrow(new RuntimeException("No supplier found with sufficient stock"));
+            .thenThrow(SupplierNotFoundException.forMaterialRequirement("PLA", "Red", 5.0));
 
         // When & Then
         mockMvc.perform(post("/orders/find-closest-supplier")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validOrderRequest)))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("No supplier found with sufficient stock for PLA Red (required: 5.0 kg)"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test

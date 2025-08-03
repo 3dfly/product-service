@@ -21,6 +21,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.withSettings;
+
+import com.threedfly.productservice.exception.SupplierNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceOptimizationTest {
@@ -47,8 +50,16 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setBuyerLongitude(-118.2437);
         
         // Set up mocks for dependencies we need but don't directly test
-        ReflectionTestUtils.setField(orderService, "supplierMapper", mock(com.threedfly.productservice.mapper.SupplierMapper.class));
-        ReflectionTestUtils.setField(orderService, "filamentStockMapper", mock(com.threedfly.productservice.mapper.FilamentStockMapper.class));
+        com.threedfly.productservice.mapper.SupplierMapper supplierMapperMock = mock(com.threedfly.productservice.mapper.SupplierMapper.class, withSettings().lenient());
+        com.threedfly.productservice.mapper.FilamentStockMapper filamentStockMapperMock = mock(com.threedfly.productservice.mapper.FilamentStockMapper.class, withSettings().lenient());
+        
+        // Mock the fromProjection method to return a supplier (lenient to handle exception tests)
+        when(supplierMapperMock.fromProjection(any())).thenReturn(mock(com.threedfly.productservice.entity.Supplier.class));
+        when(supplierMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.SupplierResponse.class));
+        when(filamentStockMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.FilamentStockResponse.class));
+        
+        ReflectionTestUtils.setField(orderService, "supplierMapper", supplierMapperMock);
+        ReflectionTestUtils.setField(orderService, "filamentStockMapper", filamentStockMapperMock);
     }
 
     @Test
@@ -83,7 +94,7 @@ class OrderServiceOptimizationTest {
                 .thenReturn(Optional.empty());
 
         // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        SupplierNotFoundException exception = assertThrows(SupplierNotFoundException.class, () -> {
             orderService.findClosestSupplier(testOrderRequest);
         });
         
