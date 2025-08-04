@@ -4,22 +4,19 @@ import com.threedfly.productservice.dto.ClosestSupplierResponse;
 import com.threedfly.productservice.dto.FilamentStockResponse;
 import com.threedfly.productservice.dto.OrderRequest;
 import com.threedfly.productservice.dto.SupplierResponse;
-import com.threedfly.productservice.entity.FilamentStock;
-import com.threedfly.productservice.entity.Supplier;
 import com.threedfly.productservice.exception.StockDataInconsistencyException;
 import com.threedfly.productservice.exception.SupplierNotFoundException;
 import com.threedfly.productservice.mapper.FilamentStockMapper;
 import com.threedfly.productservice.mapper.SupplierMapper;
-import com.threedfly.productservice.repository.FilamentStockRepository;
+
 import com.threedfly.productservice.repository.SupplierRepository;
-import com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection;
+import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
 import com.threedfly.productservice.util.DistanceCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -27,101 +24,71 @@ import java.util.Optional;
 @Slf4j
 @Transactional(readOnly = true)
 public class OrderService {
-    
+
     private final SupplierRepository supplierRepository;
-    private final FilamentStockRepository filamentStockRepository;
+
     private final SupplierMapper supplierMapper;
     private final FilamentStockMapper filamentStockMapper;
-    
+
     /**
      * Find the closest supplier that has the required filament stock available.
-     * 
+     * <p>
      * OPTIMIZED Algorithm for Large Datasets:
      * 1. Single database query with spatial calculations and JOIN on stock
      * 2. Distance calculated directly in SQL using Haversine formula
      * 3. Filters by active, verified, coordinates, and stock availability
      * 4. Orders by distance and limits results for performance
      * 5. Returns the closest supplier efficiently
-     * 
+     * <p>
      * Performance: O(log n) with proper indexing vs O(n) with the naive approach
-     * 
+     *
      * @param orderRequest The order details including buyer location and requirements
      * @return ClosestSupplierResponse with the best supplier (always successful)
-     * @throws SupplierNotFoundException if no supplier is found with sufficient stock
+     * @throws SupplierNotFoundException       if no supplier is found with sufficient stock
      * @throws StockDataInconsistencyException if stock data integrity issues occur
      */
     public ClosestSupplierResponse findClosestSupplier(OrderRequest orderRequest) {
         log.info("Finding closest supplier for material: {}, color: {}, quantity: {} kg, buyer location: ({}, {})",
                 orderRequest.getMaterialType(), orderRequest.getColor(), orderRequest.getRequiredQuantityKg(),
                 orderRequest.getBuyerLatitude(), orderRequest.getBuyerLongitude());
-        
-        // Single optimized database query that finds the closest supplier directly
-        Optional<SupplierWithDistanceProjection> supplierProjection =
-                supplierRepository.findClosestSupplierWithStock(
+
+        var closetSupplierProjection = getClosetSupplierWithStockProjection(orderRequest);
+        var closestSupplier = supplierMapper.fromStockProjection(closetSupplierProjection);
+        var availableStock = filamentStockMapper.fromStockProjection(closetSupplierProjection, closestSupplier);
+
+        SupplierResponse supplierResponse = supplierMapper.toResponse(closestSupplier);
+        FilamentStockResponse stockResponse = filamentStockMapper.toResponse(availableStock);
+        double roundedDistance = DistanceCalculator.roundDistance(closetSupplierProjection.getDistanceKm(), 2);
+
+        log.info("Closest supplier found: {} ({} km away) with {} kg available stock",
+                closestSupplier.getName(), roundedDistance, availableStock.getAvailableQuantityKg());
+
+        return ClosestSupplierResponse.success(supplierResponse, stockResponse, roundedDistance);
+    }
+
+    private ClosetSupplierProjection getClosetSupplierWithStockProjection(OrderRequest orderRequest) {
+        // Single optimized database query that finds the closest supplier and stock in one go
+        Optional<ClosetSupplierProjection> supplierStockProjection =
+                supplierRepository.findClosestSupplierWithStockOptimized(
                         orderRequest.getBuyerLatitude(),
                         orderRequest.getBuyerLongitude(),
                         orderRequest.getMaterialType().name(), // Convert enum to string
                         orderRequest.getColor(),
                         orderRequest.getRequiredQuantityKg()
                 );
-        
-        if (supplierProjection.isEmpty()) {
-            log.warn("No supplier found - Material: {}, Color: {}, Quantity: {} kg", 
+
+        if (supplierStockProjection.isEmpty()) {
+            log.warn("No supplier found - Material: {}, Color: {}, Quantity: {} kg",
                     orderRequest.getMaterialType(), orderRequest.getColor(), orderRequest.getRequiredQuantityKg());
             throw SupplierNotFoundException.forMaterialRequirement(
-                    orderRequest.getMaterialType().name(), 
-                    orderRequest.getColor(), 
+                    orderRequest.getMaterialType().name(),
+                    orderRequest.getColor(),
                     orderRequest.getRequiredQuantityKg()
             );
         }
-        
-        // Convert projection to Supplier entity using clean mapper method
-        var projection = supplierProjection.get();
-        Supplier closestSupplier = supplierMapper.fromProjection(projection);
-        
-        // Get the stock information (we know it exists from the JOIN)
-        Optional<FilamentStock> stockOptional = findBestAvailableStock(
-                closestSupplier.getId(), 
-                orderRequest.getMaterialType(), 
-                orderRequest.getColor(), 
-                orderRequest.getRequiredQuantityKg()
-        );
-        
-        if (stockOptional.isEmpty()) {
-            // This should not happen due to the JOIN, but handle gracefully
-            log.error("Stock not found for supplier {} despite JOIN query - this indicates a data consistency issue", 
-                    closestSupplier.getId());
-            throw StockDataInconsistencyException.forSupplier(closestSupplier.getId());
-        }
-        
-        SupplierResponse supplierResponse = supplierMapper.toResponse(closestSupplier);
-        FilamentStockResponse stockResponse = filamentStockMapper.toResponse(stockOptional.get());
-        double roundedDistance = DistanceCalculator.roundDistance(projection.getDistanceKm(), 2);
-        
-        log.info("Closest supplier found: {} ({} km away) with {} kg available stock",
-                closestSupplier.getName(), roundedDistance, stockOptional.get().getAvailableQuantityKg());
-        
-        return ClosestSupplierResponse.success(supplierResponse, stockResponse, roundedDistance);
+
+        // Convert projection to entities using clean mapper methods
+        return supplierStockProjection.get();
     }
 
-    /**
-     * Find the best available stock for a supplier that meets the requirements.
-     * Prefers stock with more available quantity to ensure better availability.
-     * 
-     * @param supplierId The supplier ID
-     * @param materialType Required material type
-     * @param color Required color
-     * @param requiredQuantity Required quantity in kg
-     * @return Optional of the best matching stock or empty if none available
-     */
-    private Optional<FilamentStock> findBestAvailableStock(Long supplierId, 
-                                                          com.threedfly.productservice.entity.FilamentType materialType, 
-                                                          String color, 
-                                                          Double requiredQuantity) {
-        
-        List<FilamentStock> availableStocks = filamentStockRepository
-                .findBestAvailableStockForSupplier(supplierId, materialType, color, requiredQuantity);
-        
-        return availableStocks.stream().findFirst(); // Repository query already orders by best match
-    }
 }

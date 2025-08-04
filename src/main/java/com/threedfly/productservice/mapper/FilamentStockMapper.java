@@ -4,6 +4,7 @@ import com.threedfly.productservice.dto.FilamentStockRequest;
 import com.threedfly.productservice.dto.FilamentStockResponse;
 import com.threedfly.productservice.entity.FilamentStock;
 import com.threedfly.productservice.entity.Supplier;
+import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -61,5 +62,25 @@ public class FilamentStockMapper {
         filamentStock.setLastRestocked(request.getLastRestocked());
         filamentStock.setExpiryDate(request.getExpiryDate());
         // Supplier will be set by the service layer
+    }
+
+    /**
+     * Converts a SupplierWithStockProjection to a FilamentStock entity.
+     * Used with optimized queries that fetch both supplier and stock data.
+     */
+    public FilamentStock fromStockProjection(ClosetSupplierProjection projection, Supplier supplier) {
+        if (projection == null) {
+            return null;
+        }
+
+        return FilamentStock.builder()
+                .id(projection.getStockId())
+                .supplier(supplier)
+                .materialType(projection.getMaterialType())
+                .color(projection.getColor())
+                .quantityKg(projection.getQuantityKg())
+                .reservedKg(projection.getReservedKg())
+                .available(projection.getAvailable())
+                .build();
     }
 }

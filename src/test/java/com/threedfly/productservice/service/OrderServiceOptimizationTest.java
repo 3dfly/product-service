@@ -3,8 +3,9 @@ package com.threedfly.productservice.service;
 import com.threedfly.productservice.dto.ClosestSupplierResponse;
 import com.threedfly.productservice.dto.OrderRequest;
 import com.threedfly.productservice.entity.FilamentType;
-import com.threedfly.productservice.repository.FilamentStockRepository;
+
 import com.threedfly.productservice.repository.SupplierRepository;
+import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,9 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,8 +29,7 @@ class OrderServiceOptimizationTest {
     @Mock
     private SupplierRepository supplierRepository;
 
-    @Mock
-    private FilamentStockRepository filamentStockRepository;
+
 
     @InjectMocks
     private OrderService orderService;
@@ -53,9 +50,10 @@ class OrderServiceOptimizationTest {
         com.threedfly.productservice.mapper.SupplierMapper supplierMapperMock = mock(com.threedfly.productservice.mapper.SupplierMapper.class, withSettings().lenient());
         com.threedfly.productservice.mapper.FilamentStockMapper filamentStockMapperMock = mock(com.threedfly.productservice.mapper.FilamentStockMapper.class, withSettings().lenient());
         
-        // Mock the fromProjection method to return a supplier (lenient to handle exception tests)
-        when(supplierMapperMock.fromProjection(any())).thenReturn(mock(com.threedfly.productservice.entity.Supplier.class));
+        // Mock the mapper methods to return entities and responses (lenient to handle exception tests)
+        when(supplierMapperMock.fromStockProjection(any())).thenReturn(mock(com.threedfly.productservice.entity.Supplier.class));
         when(supplierMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.SupplierResponse.class));
+        when(filamentStockMapperMock.fromStockProjection(any(), any())).thenReturn(mock(com.threedfly.productservice.entity.FilamentStock.class));
         when(filamentStockMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.FilamentStockResponse.class));
         
         ReflectionTestUtils.setField(orderService, "supplierMapper", supplierMapperMock);
@@ -66,18 +64,16 @@ class OrderServiceOptimizationTest {
     void optimizedQuery_WhenSuppliersFound_ShouldUseOptimizedPath() {
         // Given - mock the optimized query to return results
         
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         ClosestSupplierResponse result = orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0));
         
         // Should NOT call the legacy method
@@ -89,7 +85,7 @@ class OrderServiceOptimizationTest {
     @Test
     void optimizedQuery_WhenNoSuppliersFound_ShouldThrowException() {
         // Given - mock the optimized query to return empty results
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
 
@@ -101,43 +97,39 @@ class OrderServiceOptimizationTest {
         assertNotNull(exception.getMessage());
         assertTrue(exception.getMessage().contains("No supplier found with sufficient stock"));
         
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0));
     }
 
     @Test
     void optimizedQuery_ShouldSearchWithoutDistanceConstraints() {
         // Given
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that search is performed without distance constraints
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any());
     }
 
     @Test
     void optimizedQuery_ShouldReturnSingleResult() {
         // Given
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that query returns single result (LIMIT 1 in SQL)
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any());
         // No need to verify LIMIT 1 since it's in the SQL query itself
     }
@@ -146,18 +138,16 @@ class OrderServiceOptimizationTest {
     void optimizedQuery_ShouldHandleDifferentMaterialTypes() {
         // Given
         testOrderRequest.setMaterialType(FilamentType.ABS);
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that the material type is correctly passed as string
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 any(), any(), eq("ABS"), any(), any());
     }
 
@@ -167,18 +157,16 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setBuyerLatitude(40.7128); // New York
         testOrderRequest.setBuyerLongitude(-74.0060);
         
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 eq(40.7128), eq(-74.0060), any(), any(), any());
     }
 
@@ -188,18 +176,16 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setRequiredQuantityKg(15.5);
         testOrderRequest.setColor("Blue");
         
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStock(
+        verify(supplierRepository).findClosestSupplierWithStockOptimized(
                 any(), any(), any(), eq("Blue"), eq(15.5));
     }
 
@@ -215,19 +201,16 @@ class OrderServiceOptimizationTest {
         // - Legacy: N+1 queries (findByActiveAndVerifiedWithValidCoordinates + N stock queries)
         
         // Given
-        when(supplierRepository.findClosestSupplierWithStock(
+        when(supplierRepository.findClosestSupplierWithStockOptimized(
                 any(), any(), any(), any(), any()))
-                .thenReturn(Optional.of(mock(com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection.class)));
-        
-        when(filamentStockRepository.findBestAvailableStockForSupplier(any(), any(), any(), any()))
-                .thenReturn(Collections.singletonList(mock(com.threedfly.productservice.entity.FilamentStock.class)));
+                .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
+
 
         // When - call optimized version
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify minimal database interaction
-        verify(supplierRepository, times(1)).findClosestSupplierWithStock(any(), any(), any(), any(), any());
-        verify(filamentStockRepository, times(1)).findBestAvailableStockForSupplier(any(), any(), any(), any());
+        verify(supplierRepository, times(1)).findClosestSupplierWithStockOptimized(any(), any(), any(), any(), any());
         
         // Should NOT call the expensive operations from legacy approach
         verify(supplierRepository, never()).findByActiveAndVerifiedWithValidCoordinates();
