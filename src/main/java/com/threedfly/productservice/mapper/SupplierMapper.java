@@ -3,6 +3,8 @@ package com.threedfly.productservice.mapper;
 import com.threedfly.productservice.dto.SupplierRequest;
 import com.threedfly.productservice.dto.SupplierResponse;
 import com.threedfly.productservice.entity.Supplier;
+import com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection;
+import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -78,5 +80,64 @@ public class SupplierMapper {
         supplier.setDescription(request.getDescription());
         supplier.setVerified(request.isVerified());
         supplier.setActive(request.isActive());
+    }
+
+    /**
+     * Converts a SupplierWithDistanceProjection to a Supplier entity.
+     * This method provides a clean way to convert projection results to entities
+     * for use with existing mapper methods.
+     */
+    public Supplier fromProjection(SupplierWithDistanceProjection projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        return Supplier.builder()
+                .id(projection.getId())
+                .userId(projection.getUserId())
+                .name(projection.getName())
+                .email(projection.getEmail())
+                .phone(projection.getPhone())
+                .address(projection.getAddress())
+                .city(projection.getCity())
+                .state(projection.getState())
+                .country(projection.getCountry())
+                .postalCode(projection.getPostalCode())
+                .latitude(projection.getLatitude())
+                .longitude(projection.getLongitude())
+                .businessLicense(projection.getBusinessLicense())
+                .description(projection.getDescription())
+                .verified(projection.getVerified())
+                .active(projection.getActive())
+                .build();
+    }
+
+    /**
+     * Converts a SupplierWithStockProjection to a Supplier entity.
+     * This method provides a clean way to convert optimized projection results to entities.
+     */
+    public Supplier fromStockProjection(ClosetSupplierProjection projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        return Supplier.builder()
+                .id(projection.getId())
+                .userId(projection.getUserId())
+                .name(projection.getName())
+                .email(projection.getEmail())
+                .phone(projection.getPhone())
+                .address(projection.getAddress())
+                .city(projection.getCity())
+                .state(projection.getState())
+                .country(projection.getCountry())
+                .postalCode(projection.getPostalCode())
+                .latitude(projection.getLatitude())
+                .longitude(projection.getLongitude())
+                .businessLicense(projection.getBusinessLicense())
+                .description(projection.getDescription())
+                .verified(projection.getVerified())
+                .active(projection.getActive())
+                .build();
     }
 }
