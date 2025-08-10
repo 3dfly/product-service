@@ -146,7 +146,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -167,7 +167,7 @@ class OrderServiceTest {
         assertEquals(11.23, result.getDistanceKm());
         assertEquals("Closest supplier found successfully", result.getMessage());
 
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Red", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Red", 5.0);
         verify(supplierMapper).toResponse(any(Supplier.class));
         verify(filamentStockMapper).toResponse(availableStock);
     }
@@ -178,7 +178,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -201,7 +201,7 @@ class OrderServiceTest {
     @Test
     void findClosestSupplier_WhenNoSuppliersAvailable_ShouldThrowException() {
         // Given - optimized query returns empty results
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.empty());
 
@@ -215,14 +215,14 @@ class OrderServiceTest {
         assertTrue(exception.getMessage().contains("PLA Red"));
         assertTrue(exception.getMessage().contains("5.0 kg"));
 
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Red", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Red", 5.0);
 
     }
 
     @Test
     void findClosestSupplier_WhenNoSufficientStock_ShouldThrowException() {
         // Given - optimized query handles stock filtering, so empty results mean no sufficient stock
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.empty());
 
@@ -236,7 +236,7 @@ class OrderServiceTest {
         assertTrue(exception.getMessage().contains("PLA Red"));
         assertTrue(exception.getMessage().contains("5.0 kg"));
 
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Red", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Red", 5.0);
     }
 
     @Test
@@ -246,7 +246,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection)); // Returns only suppliers with sufficient stock
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -263,7 +263,7 @@ class OrderServiceTest {
         assertEquals("Near Supplier", result.getSupplier().getName()); // Returns supplier with sufficient stock
         assertEquals(1L, result.getSupplier().getId());
 
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Red", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Red", 5.0);
     }
 
     @Test
@@ -281,7 +281,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(sameLocationSupplier, 0.0); // Zero distance
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(sameLocationSupplier);
@@ -306,7 +306,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(15.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -322,7 +322,7 @@ class OrderServiceTest {
         assertNotNull(result.getSupplier());
         assertEquals("Near Supplier", result.getSupplier().getName());
 
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Red", 15.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Red", 15.0);
     }
 
     @Test
@@ -333,7 +333,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("ABS"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -345,9 +345,9 @@ class OrderServiceTest {
         ClosestSupplierResponse result = orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "ABS", "Red", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "ABS", "Red", 5.0);
         // Should NOT search for PLA
-        verify(supplierRepository, never()).findClosestSupplierWithStockOptimized(any(), any(), eq("PLA"), any(), any());
+        verify(supplierRepository, never()).findClosestSupplierWithStock(any(), any(), eq("PLA"), any(), any());
     }
 
     @Test
@@ -358,7 +358,7 @@ class OrderServiceTest {
         ClosetSupplierProjection mockProjection =
                 createMockProjection(nearSupplier, 11.23);
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Blue"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -370,9 +370,9 @@ class OrderServiceTest {
         ClosestSupplierResponse result = orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(40.7903, -73.9477, "PLA", "Blue", 5.0);
+        verify(supplierRepository).findClosestSupplierWithStock(40.7903, -73.9477, "PLA", "Blue", 5.0);
         // Should NOT search for Red
-        verify(supplierRepository, never()).findClosestSupplierWithStockOptimized(any(), any(), any(), eq("Red"), any());
+        verify(supplierRepository, never()).findClosestSupplierWithStock(any(), any(), any(), eq("Red"), any());
     }
 
     @Test
@@ -380,7 +380,7 @@ class OrderServiceTest {
         // Given - Jersey City supplier has stock
         ClosetSupplierProjection mockProjection = createMockProjection(nearSupplier, 6.0); // ~6 miles from NYC
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(nearSupplier);
@@ -414,7 +414,7 @@ class OrderServiceTest {
         // Given - Jersey City supplier is out of stock, New Haven has stock
         ClosetSupplierProjection mockProjection = createMockProjection(farSupplier, 80.0); // ~80 miles from NYC
 
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mockProjection));
         when(supplierMapper.fromStockProjection(mockProjection)).thenReturn(farSupplier);
@@ -446,7 +446,7 @@ class OrderServiceTest {
     @Test
     void findClosestSupplier_NYC_NoSupplierHasStock_ShouldThrowException() {
         // Given - No supplier has stock
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(40.7903), eq(-73.9477), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.empty());
 

@@ -30,6 +30,9 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	
+	// ModelMapper for object mapping
+	implementation 'org.modelmapper:modelmapper:3.2.0'
+	
 	// Database
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	runtimeOnly 'com.h2database:h2' // For local development and testing

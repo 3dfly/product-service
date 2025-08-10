@@ -31,7 +31,6 @@ public interface ClosetSupplierProjection {
     String getColor();
     Double getQuantityKg();
     Double getReservedKg();
-    Double getAvailableQuantityKg();
     Boolean getAvailable();
     
     // Distance field

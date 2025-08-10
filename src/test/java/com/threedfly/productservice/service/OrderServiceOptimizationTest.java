@@ -64,7 +64,7 @@ class OrderServiceOptimizationTest {
     void optimizedQuery_WhenSuppliersFound_ShouldUseOptimizedPath() {
         // Given - mock the optimized query to return results
         
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0)))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -73,7 +73,7 @@ class OrderServiceOptimizationTest {
         ClosestSupplierResponse result = orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0));
         
         // Should NOT call the legacy method
@@ -85,7 +85,7 @@ class OrderServiceOptimizationTest {
     @Test
     void optimizedQuery_WhenNoSuppliersFound_ShouldThrowException() {
         // Given - mock the optimized query to return empty results
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
 
@@ -97,14 +97,14 @@ class OrderServiceOptimizationTest {
         assertNotNull(exception.getMessage());
         assertTrue(exception.getMessage().contains("No supplier found with sufficient stock"));
         
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 eq(34.0522), eq(-118.2437), eq("PLA"), eq("Red"), eq(5.0));
     }
 
     @Test
     void optimizedQuery_ShouldSearchWithoutDistanceConstraints() {
         // Given
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -113,14 +113,14 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that search is performed without distance constraints
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 any(), any(), any(), any(), any());
     }
 
     @Test
     void optimizedQuery_ShouldReturnSingleResult() {
         // Given
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -129,7 +129,7 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that query returns single result (LIMIT 1 in SQL)
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 any(), any(), any(), any(), any());
         // No need to verify LIMIT 1 since it's in the SQL query itself
     }
@@ -138,7 +138,7 @@ class OrderServiceOptimizationTest {
     void optimizedQuery_ShouldHandleDifferentMaterialTypes() {
         // Given
         testOrderRequest.setMaterialType(FilamentType.ABS);
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -147,7 +147,7 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify that the material type is correctly passed as string
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 any(), any(), eq("ABS"), any(), any());
     }
 
@@ -157,7 +157,7 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setBuyerLatitude(40.7128); // New York
         testOrderRequest.setBuyerLongitude(-74.0060);
         
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -166,7 +166,7 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 eq(40.7128), eq(-74.0060), any(), any(), any());
     }
 
@@ -176,7 +176,7 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setRequiredQuantityKg(15.5);
         testOrderRequest.setColor("Blue");
         
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -185,7 +185,7 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then
-        verify(supplierRepository).findClosestSupplierWithStockOptimized(
+        verify(supplierRepository).findClosestSupplierWithStock(
                 any(), any(), any(), eq("Blue"), eq(15.5));
     }
 
@@ -201,7 +201,7 @@ class OrderServiceOptimizationTest {
         // - Legacy: N+1 queries (findByActiveAndVerifiedWithValidCoordinates + N stock queries)
         
         // Given
-        when(supplierRepository.findClosestSupplierWithStockOptimized(
+        when(supplierRepository.findClosestSupplierWithStock(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(ClosetSupplierProjection.class)));
 
@@ -210,7 +210,7 @@ class OrderServiceOptimizationTest {
         orderService.findClosestSupplier(testOrderRequest);
 
         // Then - verify minimal database interaction
-        verify(supplierRepository, times(1)).findClosestSupplierWithStockOptimized(any(), any(), any(), any(), any());
+        verify(supplierRepository, times(1)).findClosestSupplierWithStock(any(), any(), any(), any(), any());
         
         // Should NOT call the expensive operations from legacy approach
         verify(supplierRepository, never()).findByActiveAndVerifiedWithValidCoordinates();

@@ -26,10 +26,7 @@ public interface FilamentStockRepository extends JpaRepository<FilamentStock, Lo
     
     // Find by material type and color
     List<FilamentStock> findByMaterialTypeAndColor(FilamentType materialType, String color);
-    
-    // Find by supplier and material type
-    List<FilamentStock> findBySupplierIdAndMaterialType(Long supplierId, FilamentType materialType);
-    
+
     // Find stock with sufficient quantity
     @Query("SELECT f FROM FilamentStock f WHERE (f.quantityKg - COALESCE(f.reservedKg, 0.0)) >= :requiredKg AND f.available = true")
     List<FilamentStock> findStockWithSufficientQuantity(@Param("requiredKg") Double requiredKg);
@@ -45,15 +42,4 @@ public interface FilamentStockRepository extends JpaRepository<FilamentStock, Lo
     // Count available stock by material type
     @Query("SELECT COUNT(f) FROM FilamentStock f WHERE f.materialType = :materialType AND f.available = true")
     Long countAvailableByMaterialType(@Param("materialType") FilamentType materialType);
-    
-    // Find best available stock for supplier with specific requirements (ordered by available quantity desc)
-    @Query("SELECT f FROM FilamentStock f WHERE f.supplier.id = :supplierId " +
-           "AND f.materialType = :materialType AND f.color = :color " +
-           "AND f.available = true " +
-           "AND (f.quantityKg - COALESCE(f.reservedKg, 0.0)) >= :requiredQuantity " +
-           "ORDER BY (f.quantityKg - COALESCE(f.reservedKg, 0.0)) DESC")
-    List<FilamentStock> findBestAvailableStockForSupplier(@Param("supplierId") Long supplierId,
-                                                         @Param("materialType") FilamentType materialType,
-                                                         @Param("color") String color,
-                                                         @Param("requiredQuantity") Double requiredQuantity);
 }

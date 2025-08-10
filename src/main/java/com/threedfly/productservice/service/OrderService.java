@@ -69,7 +69,7 @@ public class OrderService {
     private ClosetSupplierProjection getClosetSupplierWithStockProjection(OrderRequest orderRequest) {
         // Single optimized database query that finds the closest supplier and stock in one go
         Optional<ClosetSupplierProjection> supplierStockProjection =
-                supplierRepository.findClosestSupplierWithStockOptimized(
+                supplierRepository.findClosestSupplierWithStock(
                         orderRequest.getBuyerLatitude(),
                         orderRequest.getBuyerLongitude(),
                         orderRequest.getMaterialType().name(), // Convert enum to string
