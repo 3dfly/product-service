@@ -3,29 +3,29 @@ package com.threedfly.productservice.mapper;
 import com.threedfly.productservice.dto.ProductRequest;
 import com.threedfly.productservice.dto.ProductResponse;
 import com.threedfly.productservice.entity.Product;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ProductMapper {
+
+    private final ModelMapper modelMapper;
+
+    @Autowired
+    public ProductMapper(ModelMapper modelMapper) {
+        this.modelMapper = modelMapper;
+    }
 
     public ProductResponse toResponse(Product product) {
         if (product == null) {
             return null;
         }
 
-        ProductResponse response = new ProductResponse();
-        response.setId(product.getId());
-        response.setName(product.getName());
-        response.setDescription(product.getDescription());
-        response.setPrice(product.getPrice());
-        response.setImageUrl(product.getImageUrl());
-        response.setStlFileUrl(product.getStlFileUrl());
-        response.setCreatedAt(product.getCreatedAt());
-        response.setUpdatedAt(product.getUpdatedAt());
-        response.setSellerId(product.getSellerId());
-        response.setShopId(product.getShopId());
+        ProductResponse response = modelMapper.map(product, ProductResponse.class);
+        // Custom logic for shop name since it requires navigation to shop entity
         response.setShopName(product.getShop() != null ? product.getShop().getName() : null);
-
+        
         return response;
     }
 
@@ -34,16 +34,7 @@ public class ProductMapper {
             return null;
         }
 
-        Product product = new Product();
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrice(request.getPrice());
-        product.setImageUrl(request.getImageUrl());
-        product.setStlFileUrl(request.getStlFileUrl());
-        product.setSellerId(request.getSellerId());
-        product.setShopId(request.getShopId());
-
-        return product;
+        return modelMapper.map(request, Product.class);
     }
 
     public void updateEntityFromRequest(Product product, ProductRequest request) {
@@ -51,12 +42,6 @@ public class ProductMapper {
             return;
         }
 
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrice(request.getPrice());
-        product.setImageUrl(request.getImageUrl());
-        product.setStlFileUrl(request.getStlFileUrl());
-        product.setSellerId(request.getSellerId());
-        product.setShopId(request.getShopId());
+        modelMapper.map(request, product);
     }
 }

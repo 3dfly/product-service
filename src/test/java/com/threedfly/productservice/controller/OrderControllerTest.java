@@ -200,27 +200,27 @@ class OrderControllerTest {
     }
 
     @Test
-    void findClosestSupplier_WhenMissingLatitude_ShouldReturnBadRequest() throws Exception {
+    void findClosestSupplier_WhenMissingLatitude_ShouldTryGeocoding() throws Exception {
         // Given
         validOrderRequest.setBuyerLatitude(null);
 
-        // When & Then
+        // When & Then - Should not return bad request since geocoding will try to enrich
         mockMvc.perform(post("/orders/find-closest-supplier")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validOrderRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk()); // Expect success since geocoding should work
     }
 
     @Test
-    void findClosestSupplier_WhenMissingLongitude_ShouldReturnBadRequest() throws Exception {
+    void findClosestSupplier_WhenMissingLongitude_ShouldTryGeocoding() throws Exception {
         // Given
         validOrderRequest.setBuyerLongitude(null);
 
-        // When & Then
+        // When & Then - Should not return bad request since geocoding will try to enrich
         mockMvc.perform(post("/orders/find-closest-supplier")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validOrderRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk()); // Expect success since geocoding should work
     }
 
     @Test

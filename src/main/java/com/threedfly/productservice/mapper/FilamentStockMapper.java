@@ -5,29 +5,33 @@ import com.threedfly.productservice.dto.FilamentStockResponse;
 import com.threedfly.productservice.entity.FilamentStock;
 import com.threedfly.productservice.entity.Supplier;
 import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FilamentStockMapper {
+
+    private final ModelMapper modelMapper;
+
+    @Autowired
+    public FilamentStockMapper(ModelMapper modelMapper) {
+        this.modelMapper = modelMapper;
+    }
 
     public FilamentStockResponse toResponse(FilamentStock filamentStock) {
         if (filamentStock == null) {
             return null;
         }
 
-        return FilamentStockResponse.builder()
-                .id(filamentStock.getId())
-                .supplierId(filamentStock.getSupplier() != null ? filamentStock.getSupplier().getId() : null)
-                .supplierName(filamentStock.getSupplier() != null ? filamentStock.getSupplier().getName() : null)
-                .materialType(filamentStock.getMaterialType())
-                .color(filamentStock.getColor())
-                .quantityKg(filamentStock.getQuantityKg())
-                .reservedKg(filamentStock.getReservedKg())
-                .available(filamentStock.isAvailable())
-                .lastRestocked(filamentStock.getLastRestocked())
-                .expiryDate(filamentStock.getExpiryDate())
-                .availableQuantityKg(filamentStock.getAvailableQuantityKg())
-                .build();
+        FilamentStockResponse response = modelMapper.map(filamentStock, FilamentStockResponse.class);
+        // Custom logic for supplier-related fields
+        if (filamentStock.getSupplier() != null) {
+            response.setSupplierId(filamentStock.getSupplier().getId());
+            response.setSupplierName(filamentStock.getSupplier().getName());
+        }
+        
+        return response;
     }
 
     public FilamentStock toEntity(FilamentStockRequest request) {
@@ -54,13 +58,7 @@ public class FilamentStockMapper {
             return;
         }
 
-        filamentStock.setMaterialType(request.getMaterialType());
-        filamentStock.setColor(request.getColor());
-        filamentStock.setQuantityKg(request.getQuantityKg());
-        filamentStock.setReservedKg(request.getReservedKg());
-        filamentStock.setAvailable(request.isAvailable());
-        filamentStock.setLastRestocked(request.getLastRestocked());
-        filamentStock.setExpiryDate(request.getExpiryDate());
+        modelMapper.map(request, filamentStock);
         // Supplier will be set by the service layer
     }
 

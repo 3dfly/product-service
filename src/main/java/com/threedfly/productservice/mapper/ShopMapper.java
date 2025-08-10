@@ -3,25 +3,29 @@ package com.threedfly.productservice.mapper;
 import com.threedfly.productservice.dto.ShopRequest;
 import com.threedfly.productservice.dto.ShopResponse;
 import com.threedfly.productservice.entity.Shop;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ShopMapper {
+
+    private final ModelMapper modelMapper;
+
+    @Autowired
+    public ShopMapper(ModelMapper modelMapper) {
+        this.modelMapper = modelMapper;
+    }
 
     public ShopResponse toResponse(Shop shop) {
         if (shop == null) {
             return null;
         }
 
-        ShopResponse response = new ShopResponse();
-        response.setId(shop.getId());
-        response.setSellerId(shop.getSellerId());
-        response.setName(shop.getName());
-        response.setDescription(shop.getDescription());
-        response.setAddress(shop.getAddress());
-        response.setContactInfo(shop.getContactInfo());
+        ShopResponse response = modelMapper.map(shop, ShopResponse.class);
+        // Custom logic for product count since it's not a direct field mapping
         response.setProductCount(shop.getProducts() != null ? (long) shop.getProducts().size() : 0L);
-
+        
         return response;
     }
 
@@ -30,14 +34,7 @@ public class ShopMapper {
             return null;
         }
 
-        Shop shop = new Shop();
-        shop.setSellerId(request.getSellerId());
-        shop.setName(request.getName());
-        shop.setDescription(request.getDescription());
-        shop.setAddress(request.getAddress());
-        shop.setContactInfo(request.getContactInfo());
-
-        return shop;
+        return modelMapper.map(request, Shop.class);
     }
 
     public void updateEntityFromRequest(Shop shop, ShopRequest request) {
@@ -45,10 +42,6 @@ public class ShopMapper {
             return;
         }
 
-        shop.setSellerId(request.getSellerId());
-        shop.setName(request.getName());
-        shop.setDescription(request.getDescription());
-        shop.setAddress(request.getAddress());
-        shop.setContactInfo(request.getContactInfo());
+        modelMapper.map(request, shop);
     }
 }

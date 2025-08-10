@@ -2,6 +2,7 @@ package com.threedfly.productservice.service;
 
 import com.threedfly.productservice.dto.ClosestSupplierResponse;
 import com.threedfly.productservice.dto.FilamentStockResponse;
+import com.threedfly.productservice.dto.GeocodingResponse;
 import com.threedfly.productservice.dto.OrderRequest;
 import com.threedfly.productservice.dto.SupplierResponse;
 import com.threedfly.productservice.exception.StockDataInconsistencyException;
@@ -26,6 +27,7 @@ import java.util.Optional;
 public class OrderService {
 
     private final SupplierRepository supplierRepository;
+    private final GeocodingService geocodingService;
 
     private final SupplierMapper supplierMapper;
     private final FilamentStockMapper filamentStockMapper;
@@ -34,11 +36,12 @@ public class OrderService {
      * Find the closest supplier that has the required filament stock available.
      * <p>
      * OPTIMIZED Algorithm for Large Datasets:
-     * 1. Single database query with spatial calculations and JOIN on stock
-     * 2. Distance calculated directly in SQL using Haversine formula
-     * 3. Filters by active, verified, coordinates, and stock availability
-     * 4. Orders by distance and limits results for performance
-     * 5. Returns the closest supplier efficiently
+     * 1. Address enrichment: If coordinates are missing, geocode the address
+     * 2. Single database query with spatial calculations and JOIN on stock
+     * 3. Distance calculated directly in SQL using Haversine formula
+     * 4. Filters by active, verified, coordinates, and stock availability
+     * 5. Orders by distance and limits results for performance
+     * 6. Returns the closest supplier efficiently
      * <p>
      * Performance: O(log n) with proper indexing vs O(n) with the naive approach
      *
@@ -46,8 +49,12 @@ public class OrderService {
      * @return ClosestSupplierResponse with the best supplier (always successful)
      * @throws SupplierNotFoundException       if no supplier is found with sufficient stock
      * @throws StockDataInconsistencyException if stock data integrity issues occur
+     * @throws IllegalArgumentException        if address geocoding fails and coordinates are missing
      */
     public ClosestSupplierResponse findClosestSupplier(OrderRequest orderRequest) {
+        // Enrich coordinates from address if they are missing
+        enrichCoordinatesIfNeeded(orderRequest);
+        
         log.info("Finding closest supplier for material: {}, color: {}, quantity: {} kg, buyer location: ({}, {})",
                 orderRequest.getMaterialType(), orderRequest.getColor(), orderRequest.getRequiredQuantityKg(),
                 orderRequest.getBuyerLatitude(), orderRequest.getBuyerLongitude());
@@ -69,7 +76,7 @@ public class OrderService {
     private ClosetSupplierProjection getClosetSupplierWithStockProjection(OrderRequest orderRequest) {
         // Single optimized database query that finds the closest supplier and stock in one go
         Optional<ClosetSupplierProjection> supplierStockProjection =
-                supplierRepository.findClosestSupplierWithStockOptimized(
+                supplierRepository.findClosestSupplierWithStock(
                         orderRequest.getBuyerLatitude(),
                         orderRequest.getBuyerLongitude(),
                         orderRequest.getMaterialType().name(), // Convert enum to string
@@ -89,6 +96,37 @@ public class OrderService {
 
         // Convert projection to entities using clean mapper methods
         return supplierStockProjection.get();
+    }
+
+    /**
+     * Enriches the order request with coordinates if they are missing.
+     * Uses the geocoding service to convert the buyer address to coordinates.
+     * Modifies the orderRequest object in-place.
+     * 
+     * @param orderRequest The order request to enrich (modified in-place)
+     * @throws IllegalArgumentException if geocoding fails and coordinates are missing
+     */
+    private void enrichCoordinatesIfNeeded(OrderRequest orderRequest) {
+        // If coordinates are already provided, no enrichment needed
+        if (!geocodingService.areCoordinatesMissing(orderRequest.getBuyerLatitude(), orderRequest.getBuyerLongitude())) {
+            return;
+        }
+
+        // Attempt to geocode the address
+        GeocodingResponse geocodingResponse = geocodingService.geocodeAddress(orderRequest.getBuyerAddress());
+        
+        if (!geocodingResponse.isSuccess()) {
+            String errorMsg = String.format(
+                "Failed to geocode buyer address '%s': %s. Please provide buyer coordinates manually.",
+                orderRequest.getBuyerAddress(), geocodingResponse.getErrorMessage()
+            );
+
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        // Enrich the existing request with the geocoded coordinates
+        orderRequest.setBuyerLatitude(geocodingResponse.getLatitude());
+        orderRequest.setBuyerLongitude(geocodingResponse.getLongitude());
     }
 
 }

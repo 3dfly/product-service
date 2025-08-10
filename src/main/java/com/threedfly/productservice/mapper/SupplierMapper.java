@@ -5,35 +5,30 @@ import com.threedfly.productservice.dto.SupplierResponse;
 import com.threedfly.productservice.entity.Supplier;
 import com.threedfly.productservice.repository.projection.SupplierWithDistanceProjection;
 import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SupplierMapper {
+
+    private final ModelMapper modelMapper;
+
+    @Autowired
+    public SupplierMapper(ModelMapper modelMapper) {
+        this.modelMapper = modelMapper;
+    }
 
     public SupplierResponse toResponse(Supplier supplier) {
         if (supplier == null) {
             return null;
         }
 
-        return SupplierResponse.builder()
-                .id(supplier.getId())
-                .userId(supplier.getUserId())
-                .name(supplier.getName())
-                .email(supplier.getEmail())
-                .phone(supplier.getPhone())
-                .address(supplier.getAddress())
-                .city(supplier.getCity())
-                .state(supplier.getState())
-                .country(supplier.getCountry())
-                .postalCode(supplier.getPostalCode())
-                .latitude(supplier.getLatitude())
-                .longitude(supplier.getLongitude())
-                .businessLicense(supplier.getBusinessLicense())
-                .description(supplier.getDescription())
-                .verified(supplier.isVerified())
-                .active(supplier.isActive())
-                .stockCount(supplier.getStock() != null ? supplier.getStock().size() : 0)
-                .build();
+        SupplierResponse response = modelMapper.map(supplier, SupplierResponse.class);
+        // Custom logic for stock count since it's not a direct field mapping
+        response.setStockCount(supplier.getStock() != null ? supplier.getStock().size() : 0);
+        
+        return response;
     }
 
     public Supplier toEntity(SupplierRequest request) {
@@ -41,23 +36,7 @@ public class SupplierMapper {
             return null;
         }
 
-        return Supplier.builder()
-                .userId(request.getUserId())
-                .name(request.getName())
-                .email(request.getEmail())
-                .phone(request.getPhone())
-                .address(request.getAddress())
-                .city(request.getCity())
-                .state(request.getState())
-                .country(request.getCountry())
-                .postalCode(request.getPostalCode())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .businessLicense(request.getBusinessLicense())
-                .description(request.getDescription())
-                .verified(request.isVerified())
-                .active(request.isActive())
-                .build();
+        return modelMapper.map(request, Supplier.class);
     }
 
     public void updateEntityFromRequest(Supplier supplier, SupplierRequest request) {
@@ -65,21 +44,7 @@ public class SupplierMapper {
             return;
         }
 
-        supplier.setUserId(request.getUserId());
-        supplier.setName(request.getName());
-        supplier.setEmail(request.getEmail());
-        supplier.setPhone(request.getPhone());
-        supplier.setAddress(request.getAddress());
-        supplier.setCity(request.getCity());
-        supplier.setState(request.getState());
-        supplier.setCountry(request.getCountry());
-        supplier.setPostalCode(request.getPostalCode());
-        supplier.setLatitude(request.getLatitude());
-        supplier.setLongitude(request.getLongitude());
-        supplier.setBusinessLicense(request.getBusinessLicense());
-        supplier.setDescription(request.getDescription());
-        supplier.setVerified(request.isVerified());
-        supplier.setActive(request.isActive());
+        modelMapper.map(request, supplier);
     }
 
     /**
@@ -92,24 +57,7 @@ public class SupplierMapper {
             return null;
         }
 
-        return Supplier.builder()
-                .id(projection.getId())
-                .userId(projection.getUserId())
-                .name(projection.getName())
-                .email(projection.getEmail())
-                .phone(projection.getPhone())
-                .address(projection.getAddress())
-                .city(projection.getCity())
-                .state(projection.getState())
-                .country(projection.getCountry())
-                .postalCode(projection.getPostalCode())
-                .latitude(projection.getLatitude())
-                .longitude(projection.getLongitude())
-                .businessLicense(projection.getBusinessLicense())
-                .description(projection.getDescription())
-                .verified(projection.getVerified())
-                .active(projection.getActive())
-                .build();
+        return modelMapper.map(projection, Supplier.class);
     }
 
     /**
@@ -121,23 +69,6 @@ public class SupplierMapper {
             return null;
         }
 
-        return Supplier.builder()
-                .id(projection.getId())
-                .userId(projection.getUserId())
-                .name(projection.getName())
-                .email(projection.getEmail())
-                .phone(projection.getPhone())
-                .address(projection.getAddress())
-                .city(projection.getCity())
-                .state(projection.getState())
-                .country(projection.getCountry())
-                .postalCode(projection.getPostalCode())
-                .latitude(projection.getLatitude())
-                .longitude(projection.getLongitude())
-                .businessLicense(projection.getBusinessLicense())
-                .description(projection.getDescription())
-                .verified(projection.getVerified())
-                .active(projection.getActive())
-                .build();
+        return modelMapper.map(projection, Supplier.class);
     }
 }
