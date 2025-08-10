@@ -2,6 +2,7 @@ package com.threedfly.productservice.service;
 
 import com.threedfly.productservice.dto.ClosestSupplierResponse;
 import com.threedfly.productservice.dto.FilamentStockResponse;
+import com.threedfly.productservice.dto.GeocodingResponse;
 import com.threedfly.productservice.dto.OrderRequest;
 import com.threedfly.productservice.dto.SupplierResponse;
 import com.threedfly.productservice.entity.FilamentStock;
@@ -35,7 +36,8 @@ class OrderServiceTest {
     @Mock
     private SupplierRepository supplierRepository;
 
-
+    @Mock
+    private GeocodingService geocodingService;
 
     @Mock
     private SupplierMapper supplierMapper;
@@ -63,6 +65,13 @@ class OrderServiceTest {
         testOrderRequest.setBuyerAddress("212 W 91st St, New York, NY 10024");
         testOrderRequest.setBuyerLatitude(40.7903);
         testOrderRequest.setBuyerLongitude(-73.9477);
+
+        // Mock geocoding service to always indicate coordinates are not missing when they are provided
+        when(geocodingService.areCoordinatesMissing(any(), any())).thenAnswer(invocation -> {
+            Double lat = invocation.getArgument(0);
+            Double lng = invocation.getArgument(1);
+            return lat == null && lng == null;
+        });
 
         // Jersey City supplier (103 Summit Ave, Jersey City, NJ 07306)
         nearSupplier = Supplier.builder()

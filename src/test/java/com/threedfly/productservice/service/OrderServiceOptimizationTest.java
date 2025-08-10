@@ -29,7 +29,8 @@ class OrderServiceOptimizationTest {
     @Mock
     private SupplierRepository supplierRepository;
 
-
+    @Mock
+    private GeocodingService geocodingService;
 
     @InjectMocks
     private OrderService orderService;
@@ -45,6 +46,13 @@ class OrderServiceOptimizationTest {
         testOrderRequest.setBuyerAddress("Los Angeles, CA");
         testOrderRequest.setBuyerLatitude(34.0522);
         testOrderRequest.setBuyerLongitude(-118.2437);
+        
+        // Mock geocoding service
+        when(geocodingService.areCoordinatesMissing(any(), any())).thenAnswer(invocation -> {
+            Double lat = invocation.getArgument(0);
+            Double lng = invocation.getArgument(1);
+            return lat == null && lng == null;
+        });
         
         // Set up mocks for dependencies we need but don't directly test
         com.threedfly.productservice.mapper.SupplierMapper supplierMapperMock = mock(com.threedfly.productservice.mapper.SupplierMapper.class, withSettings().lenient());
