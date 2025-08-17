@@ -21,4 +21,5 @@ public class ProductResponse {
     private Long sellerId;
     private Long shopId;
     private String shopName;
+    private String sku;
 }
