@@ -6,26 +6,39 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.threedfly.productservice.dto.ProductRequest;
 import com.threedfly.productservice.dto.ProductResponse;
+
 import com.threedfly.productservice.entity.IntegrationAccount;
+import com.threedfly.productservice.entity.Product;
 import com.threedfly.productservice.entity.ProductSync;
 import com.threedfly.productservice.entity.ShopType;
 import com.threedfly.productservice.repository.IntegrationAccountRepository;
+import com.threedfly.productservice.repository.ProductRepository;
 import com.threedfly.productservice.repository.ProductSyncRepository;
+
 import com.threedfly.productservice.service.ProductService;
-import com.threedfly.shopify.dto.Metafield;
 import com.threedfly.shopify.dto.PublishToShopifyRequest;
-import com.threedfly.shopify.dto.Variant;
 import com.threedfly.shopify.service.ShopifyGraphQLService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,11 +46,17 @@ import java.util.List;
 @Validated
 public class ProductController {
     private final ProductService productService;
-
+    private final ProductRepository productRepository;
     private final IntegrationAccountRepository integrationAccountRepository;
-    private final ProductSyncRepository productSyncRepository;
     private final ShopifyGraphQLService shopifyGraphQLService;
+    private final ProductSyncRepository productSyncRepository;
     private final ObjectMapper om;
+
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
+
+    @Value("${server.port:8081}")
+    private String serverPort;
 
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAllProducts() {
@@ -51,15 +70,171 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    @PostMapping
+    // Simple manual setup endpoint for Shopify integration
+    @PostMapping("/setup-shopify")
+    public ResponseEntity<Map<String, Object>> setupShopify(
+            @RequestParam String shopDomain, 
+            @RequestParam String accessToken) {
+        try {
+            IntegrationAccount acct = new IntegrationAccount();
+            acct.setShopId(1L); // Use shop ID 1 (just created)
+            acct.setProvider(ShopType.SHOPIFY);
+            acct.setExternalShopId(shopDomain);
+            acct.setAccessToken(accessToken);
+            acct.setScopes("read_products,write_products,read_inventory,write_inventory,read_publications,write_publications,write_files");
+            acct.setInstalledAt(java.time.Instant.now());
+            acct.setUpdatedAt(java.time.Instant.now());
+            
+            IntegrationAccount saved = integrationAccountRepository.save(acct);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "✅ Integration account created successfully!",
+                "shopDomain", shopDomain,
+                "accountId", saved.getId(),
+                "scopes", saved.getScopes()
+            ));
+        } catch (Exception e) {
+            e.printStackTrace(); // Log the full error
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "Failed to create integration account",
+                "message", e.getMessage(),
+                "type", e.getClass().getSimpleName()
+            ));
+        }
+    }
+
+    // Test Shopify connection
+    @PostMapping("/test-shopify-connection")
+    public ResponseEntity<Map<String, Object>> testShopifyConnection(@RequestParam Long integrationAccountId) {
+        try {
+            IntegrationAccount acct = integrationAccountRepository.findById(integrationAccountId)
+                    .orElseThrow(() -> new RuntimeException("Integration account not found: " + integrationAccountId));
+            
+            // Simple GraphQL query to test connection
+            String testQuery = """
+                query {
+                  shop {
+                    name
+                    url
+                    plan {
+                      displayName
+                    }
+                  }
+                }
+                """;
+            
+            String response = shopifyGraphQLService.postGraphQL(
+                    acct.getExternalShopId(),
+                    acct.getAccessToken(),
+                    testQuery,
+                    "{}"
+            );
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "✅ Shopify connection successful!",
+                "shopDomain", acct.getExternalShopId(),
+                "response", response
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "Failed to connect to Shopify",
+                "message", e.getMessage(),
+                "type", e.getClass().getSimpleName()
+            ));
+        }
+    }
+
+
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse product = productService.save(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(product);
     }
 
-    @PutMapping("/{id}")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductResponse> createProductWithFiles(
+            @RequestPart("product") @Valid ProductRequest request,
+            @RequestParam(value = "stlFile", required = false) MultipartFile stlFile,
+            @RequestParam(value = "imageFile", required = false) MultipartFile imageFile) throws IOException {
+        
+        ProductResponse product = productService.save(request);
+        
+        // Process STL file if provided
+        if (stlFile != null && !stlFile.isEmpty()) {
+            String stlUrl = processUploadedStlFile(product.getId(), stlFile);
+            
+            // Update the product with STL URL
+            Product productEntity = productRepository.findById(product.getId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            productEntity.setStlFileUrl(stlUrl);
+            productRepository.save(productEntity);
+            
+            // Return updated product
+            product = productService.findById(product.getId());
+        }
+        
+        // Process image file if provided
+        if (imageFile != null && !imageFile.isEmpty()) {
+            List<String> imageUrls = processUploadedImages(List.of(imageFile));
+            if (!imageUrls.isEmpty()) {
+                Product productEntity = productRepository.findById(product.getId())
+                        .orElseThrow(() -> new RuntimeException("Product not found"));
+                productEntity.setImageUrl(imageUrls.get(0));
+                productRepository.save(productEntity);
+                
+                // Return updated product
+                product = productService.findById(product.getId());
+            }
+        }
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(product);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable @NotNull Long id, @Valid @RequestBody ProductRequest request) {
         ProductResponse product = productService.update(id, request);
+        return ResponseEntity.ok(product);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductResponse> updateProductWithFiles(
+            @PathVariable @NotNull Long id,
+            @RequestPart("product") @Valid ProductRequest request,
+            @RequestParam(value = "stlFile", required = false) MultipartFile stlFile,
+            @RequestParam(value = "imageFile", required = false) MultipartFile imageFile) throws IOException {
+        
+        ProductResponse product = productService.update(id, request);
+        
+        // Process STL file if provided
+        if (stlFile != null && !stlFile.isEmpty()) {
+            String stlUrl = processUploadedStlFile(id, stlFile);
+            
+            // Update the product with STL URL
+            Product productEntity = productRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            productEntity.setStlFileUrl(stlUrl);
+            productRepository.save(productEntity);
+            
+            // Return updated product
+            product = productService.findById(id);
+        }
+        
+        // Process image file if provided
+        if (imageFile != null && !imageFile.isEmpty()) {
+            List<String> imageUrls = processUploadedImages(List.of(imageFile));
+            if (!imageUrls.isEmpty()) {
+                Product productEntity = productRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Product not found"));
+                productEntity.setImageUrl(imageUrls.get(0));
+                productRepository.save(productEntity);
+                
+                // Return updated product
+                product = productService.findById(id);
+            }
+        }
+        
         return ResponseEntity.ok(product);
     }
 
@@ -69,36 +244,161 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/publish/shopify")
-    public ResponseEntity<?> publishToShopify(
+    @DeleteMapping("/{id}/shopify")
+    public ResponseEntity<?> deleteProductFromShopify(@PathVariable @NotNull Long id) throws Exception {
+        System.out.println("🗑️ Starting deletion of product " + id + " from Shopify and local database");
+        
+        // 1) Get the product to find its Shopify ID
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
+        
+        // 2) Find the ProductSync record to get the Shopify product ID
+        Optional<ProductSync> syncRecord = productSyncRepository.findByProductId(id);
+        
+        if (syncRecord.isPresent() && syncRecord.get().getExternalProductId() != null) {
+            String shopifyProductId = syncRecord.get().getExternalProductId();
+            Long integrationAccountId = syncRecord.get().getIntegrationAccountId();
+            
+            // 3) Get integration account details
+            IntegrationAccount account = integrationAccountRepository.findById(integrationAccountId)
+                    .orElseThrow(() -> new RuntimeException("Integration account not found: " + integrationAccountId));
+            
+            // 4) Delete from Shopify using GraphQL
+            String deleteMutation = """
+                mutation productDelete($input: ProductDeleteInput!) {
+                  productDelete(input: $input) {
+                    deletedProductId
+                    userErrors { field message }
+                  }
+                }
+            """;
+            
+            ObjectMapper om = new ObjectMapper();
+            ObjectNode deleteInput = om.createObjectNode();
+            deleteInput.put("id", shopifyProductId);
+            
+            ObjectNode variables = om.createObjectNode();
+            variables.set("input", deleteInput);
+            
+            try {
+                String deleteResponse = shopifyGraphQLService.postGraphQL(
+                        account.getExternalShopId(), 
+                        account.getAccessToken(), 
+                        deleteMutation, 
+                        om.writeValueAsString(variables)
+                );
+                
+                System.out.println("🗑️ Shopify deletion response: " + deleteResponse);
+                
+                // Check for errors
+                JsonNode deleteJson = om.readTree(deleteResponse);
+                JsonNode errors = deleteJson.path("data").path("productDelete").path("userErrors");
+                if (errors.isArray() && errors.size() > 0) {
+                    System.err.println("❌ Shopify deletion errors: " + errors.toString());
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "error", "Failed to delete from Shopify",
+                        "details", errors.toString()
+                    ));
+                }
+                
+                String deletedId = deleteJson.path("data").path("productDelete").path("deletedProductId").asText();
+                System.out.println("✅ Successfully deleted from Shopify: " + deletedId);
+                
+            } catch (Exception e) {
+                System.err.println("❌ Error deleting from Shopify: " + e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "error", "Failed to delete from Shopify",
+                    "message", e.getMessage()
+                ));
+            }
+            
+            // 5) Delete the sync record
+            productSyncRepository.delete(syncRecord.get());
+            System.out.println("🗑️ Deleted ProductSync record");
+        } else {
+            System.out.println("⚠️ No Shopify sync record found - product may not be published to Shopify");
+        }
+        
+        // 6) Delete from local database
+        productService.delete(id);
+        System.out.println("🗑️ Deleted from local database");
+        
+        return ResponseEntity.ok(Map.of(
+            "message", "Product deleted successfully from both Shopify and local database",
+            "productId", id,
+            "shopifyDeleted", syncRecord.isPresent()
+        ));
+    }
+
+    @PostMapping(value = "/{id}/publish/shopify", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> publishToShopifyJson(
             @PathVariable Long id,
             @RequestBody PublishToShopifyRequest req) throws Exception {
+        return publishToShopifyInternal(id, req, null, null);
+    }
+
+    @PostMapping(value = "/{id}/publish/shopify", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> publishToShopifyMultipart(
+            @PathVariable Long id,
+            @RequestPart("request") PublishToShopifyRequest request,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "stlFiles", required = false) List<MultipartFile> stlFiles) throws Exception {
+        
+        return publishToShopifyInternal(id, request, images, stlFiles);
+    }
+
+    private ResponseEntity<?> publishToShopifyInternal(Long id, PublishToShopifyRequest req, List<MultipartFile> images, List<MultipartFile> stlFiles) throws Exception {
+
+        // Process uploaded images if any
+        List<String> uploadedImageUrls = new ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            uploadedImageUrls = processUploadedImages(images);
+        }
+        
+        // Process uploaded STL files if any
+        if (stlFiles != null && !stlFiles.isEmpty() && stlFiles.get(0) != null && !stlFiles.get(0).isEmpty()) {
+            String stlUrl = processUploadedStlFiles(id, stlFiles);
+            // STL URL is stored in the product, not sent to Shopify
+            System.out.println("STL file uploaded and saved to: " + stlUrl);
+        } else {
+            System.out.println("No STL files provided - skipping STL upload");
+        }
+        
+        // Merge uploaded images with any provided image URLs
+        List<String> allImageUrls = new ArrayList<>();
+        if (req.getImageUrls() != null) {
+            allImageUrls.addAll(req.getImageUrls());
+        }
+        allImageUrls.addAll(uploadedImageUrls);
+        req.setImageUrls(allImageUrls);
+
+        final PublishToShopifyRequest finalReq = req;
 
         // 1) Resolve Shopify account
-        var acct = integrationAccountRepository.findById(req.getIntegrationAccountId())
-                .orElseThrow(() -> new IllegalArgumentException("integrationAccountId not found: " + req.getIntegrationAccountId()));
+        var acct = integrationAccountRepository.findById(finalReq.getIntegrationAccountId())
+                .orElseThrow(() -> new IllegalArgumentException("integrationAccountId not found: " + finalReq.getIntegrationAccountId()));
         if (acct.getProvider() != ShopType.SHOPIFY) {
             throw new IllegalArgumentException("integrationAccountId is not SHOPIFY");
         }
 
         // 2) Pull your local product for defaults (adapt getters to your DTO)
         var p = productService.findById(id);
-        String title            = coalesce(req.getTitle(),           p.getName());
-        String descriptionHtml  = coalesce(req.getDescriptionHtml(), p.getDescription());
-        String vendor           = coalesce(req.getVendor(),          "YourPlatform");
-        String productType      = req.getProductType();
-        var    tags             = req.getTags();
-        String templateSuffix   = req.getTemplateSuffix();
-        String productCategoryId= req.getProductCategoryId();
-        String status           = coalesce(req.getStatus(),          "ACTIVE"); // ACTIVE or DRAFT
+        System.out.println("🔍 Local product details: ID=" + p.getId() + ", Name=" + p.getName() + ", Price=" + p.getPrice());
+        
+        String title            = coalesce(finalReq.getTitle(),           p.getName());
+        String descriptionHtml  = coalesce(finalReq.getDescriptionHtml(), p.getDescription());
+        String vendor           = coalesce(finalReq.getVendor(),          "YourPlatform");
+        String productType      = finalReq.getProductType();
+        var    tags             = finalReq.getTags();
+        String templateSuffix   = finalReq.getTemplateSuffix();
+        String status           = coalesce(finalReq.getStatus(),          "ACTIVE"); // ACTIVE or DRAFT
 
-        // 3) productCreate with options & variants
+        // 3) productCreate (without deprecated fields)
         String createMutation = """
       mutation productCreate($input: ProductInput!) {
         productCreate(input: $input) {
           product {
             id
-            variants(first: 50) { edges { node { id sku price compareAtPrice inventoryItem { id } } } }
           }
           userErrors { field message }
         }
@@ -111,9 +411,11 @@ public class ProductController {
                 .put("vendor", vendor)
                 .put("status", status);
 
+        // Remove the incorrect defaultPrice field - Shopify doesn't support this
+        // Price will be set via variants instead
+
         if (productType != null)     input.put("productType", productType);
         if (templateSuffix != null)  input.put("templateSuffix", templateSuffix);
-        if (productCategoryId != null) input.put("productCategory", productCategoryId); // taxonomy GID
 
         if (tags != null && !tags.isEmpty()) {
             ArrayNode t = om.createArrayNode();
@@ -121,39 +423,13 @@ public class ProductController {
             input.set("tags", t);
         }
 
-        // Option names (e.g., ["Color","Size"])
-        if (req.getOptions() != null && !req.getOptions().isEmpty()) {
-            ArrayNode optionNames = om.createArrayNode();
-            req.getOptions().forEach(optionNames::add);
-            input.set("options", optionNames);
+        // Use collections instead of productCategory
+        if (req.getCollections() != null && req.getCollections().getCollectionIds() != null
+                && !req.getCollections().getCollectionIds().isEmpty()) {
+            ArrayNode collectionsToJoin = om.createArrayNode();
+    finalReq.getCollections().getCollectionIds().forEach(collectionsToJoin::add);
+            input.set("collectionsToJoin", collectionsToJoin);
         }
-
-        // Variants
-        ArrayNode variants = om.createArrayNode();
-        if (req.getVariants() != null && !req.getVariants().isEmpty()) {
-            for (var v : req.getVariants()) {
-                ObjectNode vn = om.createObjectNode();
-                if (v.getOptionValues() != null) {
-                    ArrayNode ov = om.createArrayNode();
-                    v.getOptionValues().forEach(ov::add);
-                    vn.set("options", ov);
-                }
-                if (v.getSku() != null)            vn.put("sku", v.getSku());
-                if (v.getBarcode() != null)        vn.put("barcode", v.getBarcode());
-                if (v.getPrice() != null)          vn.put("price", v.getPrice());
-                if (v.getCompareAtPrice() != null) vn.put("compareAtPrice", v.getCompareAtPrice());
-                variants.add(vn);
-            }
-        } else {
-            // fallback single variant from simple fields / local product
-            ObjectNode vn = om.createObjectNode()
-                    .put("sku", coalesce(req.getSku(), p.getSku() == null ? "" : p.getSku()))
-                    .put("price", coalesce(req.getPrice(), "0.00"));
-            if (req.getBarcode() != null)        vn.put("barcode", req.getBarcode());
-            if (req.getCompareAtPrice() != null) vn.put("compareAtPrice", req.getCompareAtPrice());
-            variants.add(vn);
-        }
-        input.set("variants", variants);
 
         ObjectNode createVars = om.createObjectNode();
         createVars.set("input", input);
@@ -174,33 +450,232 @@ public class ProductController {
         }
         String productGid = productNode.get("id").asText();
 
-        // 4) Attach images via productUpdate(media) if provided
-        if (req.getImageUrls() != null && !req.getImageUrls().isEmpty()) {
-            String mediaMutation = """
-          mutation UpdateProductWithNewMedia($product: ProductUpdateInput!, $media: [CreateMediaInput!]) {
-            productUpdate(product: $product, media: $media) {
+        // 3.1) Add product options if specified
+        if (req.getOptions() != null && !req.getOptions().isEmpty()) {
+            String optionsMutation = """
+          mutation productOptionsCreate($productId: ID!, $options: [OptionCreateInput!]!) {
+            productOptionsCreate(productId: $productId, options: $options) {
               product { id }
               userErrors { field message }
             }
           }
         """;
 
-            ObjectNode productVar = om.createObjectNode().put("id", productGid);
-            ArrayNode mediaArray  = om.createArrayNode();
-            for (String url : req.getImageUrls()) {
-                ObjectNode m = om.createObjectNode();
-                m.put("originalSource", url);
-                m.put("mediaContentType", "IMAGE");
-                m.put("alt", title);
-                mediaArray.add(m);
+            ArrayNode optionsArray = om.createArrayNode();
+            for (String optionName : req.getOptions()) {
+                ObjectNode option = om.createObjectNode();
+                option.put("name", optionName);
+                // Extract values from variants if available
+                if (req.getVariants() != null && !req.getVariants().isEmpty()) {
+                    ArrayNode values = om.createArrayNode();
+                    for (var variant : req.getVariants()) {
+                        if (variant.getOptionValues() != null && !variant.getOptionValues().isEmpty()) {
+                            // For simplicity, take the first option value for each variant
+                            String value = variant.getOptionValues().get(0);
+                            if (!containsValue(values, value)) {
+                                values.add(value);
+                            }
+                        }
+                    }
+                    option.set("values", values);
+                } else {
+                    // Default values if no variants specified
+                    ArrayNode defaultValues = om.createArrayNode();
+                    defaultValues.add("Default");
+                    option.set("values", defaultValues);
+                }
+                optionsArray.add(option);
             }
-            ObjectNode mediaVars = om.createObjectNode();
-            mediaVars.set("product", productVar);
-            mediaVars.set("media",   mediaArray);
 
-            shopifyGraphQLService.postGraphQL(
-                    acct.getExternalShopId(), acct.getAccessToken(), mediaMutation, om.writeValueAsString(mediaVars)
+            ObjectNode optionsVars = om.createObjectNode();
+            optionsVars.put("productId", productGid);
+            optionsVars.set("options", optionsArray);
+
+            String optionsRaw = shopifyGraphQLService.postGraphQL(
+                    acct.getExternalShopId(), acct.getAccessToken(), optionsMutation, om.writeValueAsString(optionsVars)
             );
+
+            JsonNode optionsJson = om.readTree(optionsRaw);
+            JsonNode optionsErrors = optionsJson.path("data").path("productOptionsCreate").path("userErrors");
+            if (optionsErrors.isArray() && optionsErrors.size() > 0) {
+                return ResponseEntity.status(422).body(optionsRaw);
+            }
+        }
+
+        // 3.2) Add product variants - always create at least one variant with price
+        String variantsMutation = """
+          mutation productVariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkCreate(productId: $productId, variants: $variants) {
+              product { 
+                id 
+                variants(first: 50) { edges { node { id sku price compareAtPrice inventoryItem { id } } } }
+              }
+              userErrors { field message }
+            }
+          }
+        """;
+
+        ArrayNode variantsArray = om.createArrayNode();
+        
+        if (req.getVariants() != null && !req.getVariants().isEmpty()) {
+            // Use specified variants
+            for (var v : req.getVariants()) {
+                ObjectNode vn = om.createObjectNode();
+                if (v.getOptionValues() != null && !v.getOptionValues().isEmpty()) {
+                    ArrayNode ov = om.createArrayNode();
+                    v.getOptionValues().forEach(ov::add);
+                    vn.set("optionValues", ov);
+                }
+                if (v.getSku() != null)            vn.put("sku", v.getSku());
+                if (v.getBarcode() != null)        vn.put("barcode", v.getBarcode());
+                if (v.getPrice() != null)          vn.put("price", v.getPrice());
+                if (v.getCompareAtPrice() != null) vn.put("compareAtPrice", v.getCompareAtPrice());
+                variantsArray.add(vn);
+            }
+        } else {
+            // Create default variant with price from local product
+            ObjectNode defaultVariant = om.createObjectNode();
+            if (p.getPrice() > 0) {
+                defaultVariant.put("price", String.format("%.2f", p.getPrice()));
+                System.out.println("💰 Creating default variant with price: $" + String.format("%.2f", p.getPrice()));
+            } else {
+                defaultVariant.put("price", "0.00");
+                System.out.println("⚠️ No price found, setting default variant price to $0.00");
+            }
+            // Add a default SKU if available
+            if (p.getName() != null) {
+                String defaultSku = p.getName().replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+                if (defaultSku.length() > 20) defaultSku = defaultSku.substring(0, 20);
+                defaultVariant.put("sku", defaultSku + "-DEFAULT");
+            }
+            variantsArray.add(defaultVariant);
+        }
+
+        ObjectNode variantsVars = om.createObjectNode();
+        variantsVars.put("productId", productGid);
+        variantsVars.set("variants", variantsArray);
+
+        String variantsRaw = shopifyGraphQLService.postGraphQL(
+                acct.getExternalShopId(), acct.getAccessToken(), variantsMutation, om.writeValueAsString(variantsVars)
+        );
+
+        JsonNode variantsJson = om.readTree(variantsRaw);
+        JsonNode variantsErrors = variantsJson.path("data").path("productVariantsBulkCreate").path("userErrors");
+        if (variantsErrors.isArray() && variantsErrors.size() > 0) {
+            System.err.println("❌ Variant creation errors: " + variantsErrors.toString());
+            return ResponseEntity.status(422).body(variantsRaw);
+        }
+
+        System.out.println("✅ Variants created successfully");
+        // Update productNode to include the new variants for inventory handling
+        productNode = variantsJson.path("data").path("productVariantsBulkCreate").path("product");
+
+        // 4) Process uploaded images and attach to product
+        List<String> imagesToUpload = null;
+        
+        // Process uploaded images first if provided
+        if (images != null && !images.isEmpty()) {
+            try {
+                imagesToUpload = processUploadedImages(images);
+                System.out.println("✅ Processed uploaded images: " + imagesToUpload);
+            } catch (IOException e) {
+                System.err.println("❌ Failed to process uploaded images: " + e.getMessage());
+            }
+        }
+        
+        // Fallback to request imageUrls if no uploaded images
+        if (imagesToUpload == null || imagesToUpload.isEmpty()) {
+            imagesToUpload = req.getImageUrls();
+        }
+        
+        // Fallback to local product image if no images provided in request
+        if ((imagesToUpload == null || imagesToUpload.isEmpty()) && p.getImageUrl() != null && !p.getImageUrl().isBlank()) {
+            imagesToUpload = List.of(p.getImageUrl());
+        }
+        
+        // Always ensure we have at least one publicly accessible image
+        System.out.println("🔍 Checking images for public accessibility: " + imagesToUpload);
+        boolean hasValidPublicImage = imagesToUpload != null && !imagesToUpload.isEmpty() &&
+            imagesToUpload.stream().anyMatch(url -> {
+                boolean isPublic = url.startsWith("https://") && !url.contains("localhost");
+                System.out.println("🌐 URL: " + url + " -> isPublic: " + isPublic);
+                return isPublic;
+            });
+            
+        if (!hasValidPublicImage) {
+            System.out.println("⚠️ No valid public images found, using placeholder");
+            imagesToUpload = List.of("https://via.placeholder.com/600x600/4A90E2/FFFFFF?text=3D+Print+Product");
+        } else {
+            System.out.println("✅ Found valid public images!");
+        }
+        
+        System.out.println("📸 Images to upload to Shopify: " + imagesToUpload);
+        
+        if (imagesToUpload != null && !imagesToUpload.isEmpty()) {
+            String mediaMutation = """
+              mutation productUpdateWithMedia($input: ProductInput!, $media: [CreateMediaInput!]!) {
+                productUpdate(input: $input, media: $media) {
+                  product { 
+                    id 
+                    media(first: 10) {
+                      edges {
+                        node {
+                          ... on MediaImage {
+                            id
+                            image {
+                              url
+                              altText
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  userErrors { field message }
+                }
+              }
+            """;
+
+            ObjectNode productInput = om.createObjectNode();
+            productInput.put("id", productGid);
+            
+            ArrayNode mediaArray = om.createArrayNode();
+            for (String url : imagesToUpload) {
+                if (url != null && !url.isBlank() && (url.startsWith("http://") || url.startsWith("https://"))) {
+                    ObjectNode m = om.createObjectNode();
+                    m.put("originalSource", url);
+                    m.put("mediaContentType", "IMAGE");
+                    m.put("alt", title + " - 3D Print");
+                    mediaArray.add(m);
+                    System.out.println("📷 Adding image to Shopify: " + url);
+                }
+            }
+            
+            if (mediaArray.size() > 0) {
+                ObjectNode mediaVars = om.createObjectNode();
+                mediaVars.set("input", productInput);
+                mediaVars.set("media", mediaArray);
+
+                System.out.println("🚀 Sending media to Shopify...");
+                String mediaRaw = shopifyGraphQLService.postGraphQL(
+                        acct.getExternalShopId(), acct.getAccessToken(), mediaMutation, om.writeValueAsString(mediaVars)
+                );
+                
+                System.out.println("📡 Shopify media response: " + mediaRaw);
+                
+                // Check for errors in image upload
+                JsonNode mediaJson = om.readTree(mediaRaw);
+                JsonNode mediaErrors = mediaJson.path("data").path("productUpdate").path("userErrors");
+                if (mediaErrors.isArray() && mediaErrors.size() > 0) {
+                    System.err.println("❌ Image upload errors: " + mediaErrors.toString());
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "error", "Image upload failed",
+                        "details", mediaErrors.toString()
+                    ));
+                } else {
+                    System.out.println("✅ Images uploaded successfully to Shopify");
+                }
+            }
         }
 
         // 5) SEO (productUpdate with seo)
@@ -269,56 +744,142 @@ public class ProductController {
         """;
             String locationId = req.getInventory().getLocationId();
 
-            ArrayNode edges = (ArrayNode) productNode.path("variants").path("edges");
-            ArrayNode setQuantities = om.createArrayNode();
-            for (int i = 0; i < edges.size() && i < req.getVariants().size(); i++) {
-                JsonNode variantNode = edges.get(i).path("node");
-                String inventoryItemId = variantNode.path("inventoryItem").path("id").asText();
-                Integer qty = req.getVariants().get(i).getQuantity();
-                if (qty != null) {
-                    ObjectNode item = om.createObjectNode();
-                    item.put("inventoryItemId", inventoryItemId);
-                    item.put("locationId", locationId);
-                    item.put("quantity", qty);
-                    item.put("type", "on_hand");
-                    setQuantities.add(item);
+            // Check if variants exist in the productNode (they should after variant creation)
+            JsonNode variantsPath = productNode.path("variants");
+            if (!variantsPath.isMissingNode() && variantsPath.has("edges")) {
+                ArrayNode edges = (ArrayNode) variantsPath.path("edges");
+                ArrayNode setQuantities = om.createArrayNode();
+                for (int i = 0; i < edges.size() && i < req.getVariants().size(); i++) {
+                    JsonNode variantNode = edges.get(i).path("node");
+                    String inventoryItemId = variantNode.path("inventoryItem").path("id").asText();
+                    Integer qty = req.getVariants().get(i).getQuantity();
+                    if (qty != null && !inventoryItemId.isEmpty()) {
+                        ObjectNode item = om.createObjectNode();
+                        item.put("inventoryItemId", inventoryItemId);
+                        item.put("locationId", locationId);
+                        item.put("quantity", qty);
+                        item.put("type", "on_hand");
+                        setQuantities.add(item);
+                    }
                 }
-            }
-            if (setQuantities.size() > 0) {
-                ObjectNode inputInv = om.createObjectNode();
-                inputInv.put("reason", "correction");
-                inputInv.set("setQuantities", setQuantities);
+                if (setQuantities.size() > 0) {
+                    ObjectNode inputInv = om.createObjectNode();
+                    inputInv.put("reason", "correction");
+                    inputInv.set("setQuantities", setQuantities);
 
-                ObjectNode invVars = om.createObjectNode();
-                invVars.set("input", inputInv);
+                    ObjectNode invVars = om.createObjectNode();
+                    invVars.set("input", inputInv);
 
-                shopifyGraphQLService.postGraphQL(
-                        acct.getExternalShopId(), acct.getAccessToken(), invMutation, om.writeValueAsString(invVars)
-                );
+                    shopifyGraphQLService.postGraphQL(
+                            acct.getExternalShopId(), acct.getAccessToken(), invMutation, om.writeValueAsString(invVars)
+                    );
+                }
             }
         }
 
-        // 8) Add to manual collections (optional)
-        if (req.getCollections() != null && req.getCollections().getCollectionIds() != null
-                && !req.getCollections().getCollectionIds().isEmpty()) {
-            String addToCollections = """
-          mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
-            collectionAddProducts(id: $id, productIds: $productIds) {
-              job { id }
-              userErrors { field message }
-            }
-          }
-        """;
-            for (String cid : req.getCollections().getCollectionIds()) {
-                ObjectNode vars = om.createObjectNode();
-                vars.put("id", cid);
-                ArrayNode ids = om.createArrayNode().add(productGid);
-                vars.set("productIds", ids);
+        // Collections are now handled during product creation with collectionsToJoin
 
-                shopifyGraphQLService.postGraphQL(
-                        acct.getExternalShopId(), acct.getAccessToken(), addToCollections, om.writeValueAsString(vars)
-                );
+        // 8) Publish to Online Store sales channel
+        System.out.println("🚀 Starting publication process...");
+        try {
+            // First, get available publications for this shop (now with read_publications scope)
+            String publicationsQuery = """
+                query {
+                  publications(first: 10) {
+                    edges {
+                      node {
+                        id
+                        name
+                        supportsFuturePublishing
+                      }
+                    }
+                  }
+                }
+            """;
+            
+            String publicationsRaw = shopifyGraphQLService.postGraphQL(
+                    acct.getExternalShopId(), acct.getAccessToken(), publicationsQuery, "{}"
+            );
+            
+            System.out.println("📋 Publications query response: " + publicationsRaw);
+            
+            JsonNode publicationsJson = om.readTree(publicationsRaw);
+            JsonNode publicationsEdges = publicationsJson.path("data").path("publications").path("edges");
+            
+            if (publicationsEdges.isMissingNode() || !publicationsEdges.isArray()) {
+                System.err.println("❌ No publications data found in response");
+                System.out.println("⚠️ Product created but publication failed - you may need to manually publish in Shopify admin");
+            } else {
+                String onlineStorePublicationId = null;
+                System.out.println("📋 Searching through " + publicationsEdges.size() + " publications...");
+                
+                // Find the Online Store publication
+                for (JsonNode edge : publicationsEdges) {
+                    String name = edge.path("node").path("name").asText();
+                    String publicationId = edge.path("node").path("id").asText();
+                    System.out.println("📋 Found publication: '" + name + "' -> " + publicationId);
+                    if ("Online Store".equals(name)) {
+                        onlineStorePublicationId = publicationId;
+                        System.out.println("✅ Found Online Store publication ID: " + publicationId);
+                        break;
+                    }
+                }
+                
+                if (onlineStorePublicationId != null) {
+                    System.out.println("📤 Publishing product " + productGid + " to Online Store...");
+                    
+                    String publishMutation = """
+                      mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+                        publishablePublish(id: $id, input: $input) {
+                          publishable {
+                            publicationCount
+                          }
+                          userErrors { field message }
+                        }
+                      }
+                    """;
+
+                    ArrayNode publicationsArray = om.createArrayNode();
+                    ObjectNode onlineStorePublication = om.createObjectNode();
+                    onlineStorePublication.put("publicationId", onlineStorePublicationId);
+                    publicationsArray.add(onlineStorePublication);
+
+                    ObjectNode publishVars = om.createObjectNode();
+                    publishVars.put("id", productGid);
+                    publishVars.set("input", publicationsArray);
+
+                    System.out.println("📋 Publishing with variables: " + om.writeValueAsString(publishVars));
+
+                    String publishRaw = shopifyGraphQLService.postGraphQL(
+                            acct.getExternalShopId(), acct.getAccessToken(), publishMutation, om.writeValueAsString(publishVars)
+                    );
+                    
+                    System.out.println("📢 Publication response: " + publishRaw);
+                    
+                    JsonNode publishJson = om.readTree(publishRaw);
+                    JsonNode publishErrors = publishJson.path("data").path("publishablePublish").path("userErrors");
+                    if (publishErrors.isArray() && publishErrors.size() > 0) {
+                        System.err.println("❌ Publication errors: " + publishErrors.toString());
+                        System.out.println("⚠️ Product created but publication failed - you may need to manually publish in Shopify admin");
+                    } else {
+                        JsonNode publishable = publishJson.path("data").path("publishablePublish").path("publishable");
+                        int publicationCount = publishable.path("publicationCount").asInt();
+                        System.out.println("✅ Product published to Online Store successfully!");
+                        System.out.println("📊 Publication count: " + publicationCount);
+                        
+                        if (publicationCount == 0) {
+                            System.out.println("⚠️ WARNING: Publication count is 0 - product may not be visible in store");
+                        }
+                    }
+                } else {
+                    System.err.println("❌ Could not find 'Online Store' publication in available publications");
+                    System.out.println("⚠️ Product created but publication failed - you may need to manually publish in Shopify admin");
+                }
             }
+        } catch (Exception e) {
+            System.err.println("❌ Failed to publish to Online Store: " + e.getMessage());
+            System.out.println("⚠️ Product created but publication failed - you may need to manually publish in Shopify admin");
+            // Don't fail the entire request for publication issues
         }
 
         // 9) Done
@@ -330,6 +891,160 @@ public class ProductController {
 
     private static String coalesce(String a, String b) {
         return a != null && !a.isBlank() ? a : b;
+    }
+
+    private boolean containsValue(ArrayNode array, String value) {
+        for (int i = 0; i < array.size(); i++) {
+            if (array.get(i).asText().equals(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> processUploadedImages(List<MultipartFile> images) throws IOException {
+        List<String> imageUrls = new ArrayList<>();
+        
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        
+        for (MultipartFile image : images) {
+            if (image.isEmpty()) {
+                continue;
+            }
+            
+            // Validate file type
+            String contentType = image.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new IllegalArgumentException("File must be an image: " + image.getOriginalFilename());
+            }
+            
+            // Generate unique filename
+            String originalFilename = image.getOriginalFilename();
+            String extension = originalFilename != null ? 
+                originalFilename.substring(originalFilename.lastIndexOf('.')) : ".jpg";
+            String fileName = UUID.randomUUID().toString() + extension;
+            
+            // Save file
+            Path filePath = uploadPath.resolve(fileName);
+            Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // Generate URL - use ngrok URL if available, otherwise localhost
+            String baseUrl = getNgrokUrl();
+            System.out.println("🔍 NGROK_URL check: " + baseUrl);
+            if (baseUrl == null || baseUrl.isEmpty()) {
+                baseUrl = "http://localhost:" + serverPort;
+                System.out.println("📍 Using localhost URL: " + baseUrl);
+            } else {
+                System.out.println("🌐 Using ngrok URL: " + baseUrl);
+            }
+            String imageUrl = baseUrl + "/images/" + fileName;
+            System.out.println("🔗 Final image URL: " + imageUrl);
+            imageUrls.add(imageUrl);
+        }
+        
+        return imageUrls;
+    }
+
+    private String processUploadedStlFiles(Long productId, List<MultipartFile> stlFiles) throws IOException {
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        
+        // For simplicity, use the first STL file
+        MultipartFile stlFile = stlFiles.get(0);
+        
+        if (stlFile.isEmpty()) {
+            throw new IllegalArgumentException("STL file is empty");
+        }
+        
+        // Validate file type
+        String originalFilename = stlFile.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".stl")) {
+            throw new IllegalArgumentException("File must be an STL file: " + originalFilename);
+        }
+        
+        // Generate unique filename
+        String fileName = UUID.randomUUID().toString() + ".stl";
+        
+        // Save file
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(stlFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        
+        // Generate URL
+        String baseUrl = getNgrokUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            baseUrl = "http://localhost:" + serverPort;
+        }
+        String stlUrl = baseUrl + "/images/" + fileName; // Using same endpoint for file serving
+        
+        // Update product with STL URL
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + productId));
+        product.setStlFileUrl(stlUrl);
+        productRepository.save(product);
+        
+        return stlUrl;
+    }
+
+    private String processUploadedStlFile(Long productId, MultipartFile stlFile) throws IOException {
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        
+        if (stlFile.isEmpty()) {
+            throw new IllegalArgumentException("STL file is empty");
+        }
+        
+        // Validate file type
+        String originalFilename = stlFile.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".stl")) {
+            throw new IllegalArgumentException("File must be an STL file: " + originalFilename);
+        }
+        
+        // Generate unique filename
+        String fileName = UUID.randomUUID().toString() + ".stl";
+        
+        // Save file
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(stlFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        
+        // Generate URL
+        String baseUrl = getNgrokUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            baseUrl = "http://localhost:" + serverPort;
+        }
+        String stlUrl = baseUrl + "/images/" + fileName; // Using same endpoint for file serving
+        
+        return stlUrl;
+    }
+
+    /**
+     * Get ngrok URL from environment variable or system property.
+     * Checks both NGROK_URL environment variable (set by scripts) and 
+     * system property (set by NgrokAutoStartService for IntelliJ debugging).
+     */
+    private String getNgrokUrl() {
+        // First check environment variable (set by startup scripts)
+        String ngrokUrl = System.getenv("NGROK_URL");
+        if (ngrokUrl != null && !ngrokUrl.isEmpty()) {
+            return ngrokUrl;
+        }
+        
+        // Then check system property (set by NgrokAutoStartService)
+        ngrokUrl = System.getProperty("NGROK_URL");
+        if (ngrokUrl != null && !ngrokUrl.isEmpty()) {
+            return ngrokUrl;
+        }
+        
+        return null;
     }
 
     // Small DTOs for the publish endpoint
