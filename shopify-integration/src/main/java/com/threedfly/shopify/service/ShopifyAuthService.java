@@ -1,6 +1,7 @@
 package com.threedfly.shopify.service;
 
 import com.threedfly.shopify.config.ShopifyConfig;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -9,9 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class ShopifyAuthService {
     private final ShopifyConfig cfg;
-    public ShopifyAuthService(ShopifyConfig cfg){ this.cfg = cfg; }
 
     public String newState(){ return UUID.randomUUID().toString(); }
 

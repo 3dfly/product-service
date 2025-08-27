@@ -15,7 +15,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 				"repository",                 // Infrastructure repositories
 				"mapper",                     // Infrastructure mappers
 				"dto",                        // Infrastructure DTOs
-				"exception"                   // Infrastructure exceptions
+				"exception",                  // Infrastructure exceptions
+				"configuration"				  // Common
 		}
 )
 @EnableJpaRepositories(basePackages = "repository")

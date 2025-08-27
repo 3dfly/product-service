@@ -45,7 +45,7 @@ public class ProductService {
         var integrationAccount = integrationAccountRepository.findById(req.getIntegrationAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("integrationAccountId not found: " + req.getIntegrationAccountId()));
 
-        var storeProvider = applicationContext.getBean(integrationAccount.getProvider().name(), StoreProvider.class);
+        var storeProvider = applicationContext.getBean(integrationAccount.getProvider().getValue(), StoreProvider.class);
 
         return storeProvider.publishProduct(req, product, integrationAccount);
     }

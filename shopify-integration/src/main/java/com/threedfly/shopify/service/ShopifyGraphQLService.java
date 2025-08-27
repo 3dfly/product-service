@@ -1,15 +1,15 @@
-// src/main/java/com/threedfly/shopify/service/ShopifyGraphQLService.java
 package com.threedfly.shopify.service;
 
 import com.threedfly.shopify.config.ShopifyConfig;
+import lombok.AllArgsConstructor;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
 
 @Service
+@AllArgsConstructor
 public class ShopifyGraphQLService {
-    private final OkHttpClient http = new OkHttpClient();
+    private final OkHttpClient http;
     private final ShopifyConfig cfg;
-    public ShopifyGraphQLService(ShopifyConfig cfg){ this.cfg = cfg; }
 
     public String postGraphQL(String shopDomain, String accessToken, String graphql, String variablesJson) throws Exception {
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");

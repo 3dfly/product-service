@@ -13,11 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import provider.StoreProvider;
-import service.ProviderUtils;
+import service.StoreUtils;
 
 import java.util.Map;
 
-@Service("SHOPIFY")
+@Service("shopify")
 @AllArgsConstructor
 public class ShopifyProvider implements StoreProvider {
 
@@ -130,7 +130,7 @@ public class ShopifyProvider implements StoreProvider {
         String descriptionHtml = product.getDescription();
         
         // Shopify-specific fields from request
-        String status = ProviderUtils.coalesce(request.getStatus(), "ACTIVE"); // ACTIVE or DRAFT
+        String status = StoreUtils.coalesce(request.getStatus(), "ACTIVE"); // ACTIVE or DRAFT
 
         ObjectNode productNode = om.createObjectNode()
                 .put("title", title)                       // From Product entity
@@ -206,7 +206,6 @@ mutation SetVariantPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]
                 acct.getExternalShopId(), acct.getAccessToken(), bulkUpdate, om.writeValueAsString(bulkVars)
         );
     }
-
 
     private void setProductMedia(Product product, String productGid, IntegrationAccount acct) throws Exception {
         // Check if product has image data
