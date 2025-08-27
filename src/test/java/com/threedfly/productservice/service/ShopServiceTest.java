@@ -1,10 +1,11 @@
 package com.threedfly.productservice.service;
 
-import com.threedfly.productservice.dto.ShopRequest;
-import com.threedfly.productservice.dto.ShopResponse;
-import com.threedfly.productservice.entity.Shop;
-import com.threedfly.productservice.mapper.ShopMapper;
-import com.threedfly.productservice.repository.ShopRepository;
+import dto.ShopRequest;
+import dto.ShopResponse;
+import entity.Shop;
+import mapper.ShopMapper;
+import repository.ShopRepository;
+import service.ShopService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

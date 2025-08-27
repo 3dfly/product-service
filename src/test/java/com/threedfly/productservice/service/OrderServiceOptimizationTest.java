@@ -1,11 +1,17 @@
 package com.threedfly.productservice.service;
 
-import com.threedfly.productservice.dto.ClosestSupplierResponse;
-import com.threedfly.productservice.dto.OrderRequest;
-import com.threedfly.productservice.entity.FilamentType;
+import dto.ClosestSupplierResponse;
+import dto.OrderRequest;
+import dto.FilamentStockResponse;
+import dto.SupplierResponse;
+import entity.FilamentType;
 
-import com.threedfly.productservice.repository.SupplierRepository;
-import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
+import repository.SupplierRepository;
+import repository.projection.ClosetSupplierProjection;
+import mapper.FilamentStockMapper;
+import mapper.SupplierMapper;
+import service.OrderService;
+import service.GeocodingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.withSettings;
 
-import com.threedfly.productservice.exception.SupplierNotFoundException;
+import exception.SupplierNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceOptimizationTest {
@@ -55,14 +61,14 @@ class OrderServiceOptimizationTest {
         });
         
         // Set up mocks for dependencies we need but don't directly test
-        com.threedfly.productservice.mapper.SupplierMapper supplierMapperMock = mock(com.threedfly.productservice.mapper.SupplierMapper.class, withSettings().lenient());
-        com.threedfly.productservice.mapper.FilamentStockMapper filamentStockMapperMock = mock(com.threedfly.productservice.mapper.FilamentStockMapper.class, withSettings().lenient());
+        SupplierMapper supplierMapperMock = mock(SupplierMapper.class, withSettings().lenient());
+        FilamentStockMapper filamentStockMapperMock = mock(FilamentStockMapper.class, withSettings().lenient());
         
         // Mock the mapper methods to return entities and responses (lenient to handle exception tests)
-        when(supplierMapperMock.fromStockProjection(any())).thenReturn(mock(com.threedfly.productservice.entity.Supplier.class));
-        when(supplierMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.SupplierResponse.class));
-        when(filamentStockMapperMock.fromStockProjection(any(), any())).thenReturn(mock(com.threedfly.productservice.entity.FilamentStock.class));
-        when(filamentStockMapperMock.toResponse(any())).thenReturn(mock(com.threedfly.productservice.dto.FilamentStockResponse.class));
+        when(supplierMapperMock.fromStockProjection(any())).thenReturn(mock(entity.Supplier.class));
+        when(supplierMapperMock.toResponse(any())).thenReturn(mock(SupplierResponse.class));
+        when(filamentStockMapperMock.fromStockProjection(any(), any())).thenReturn(mock(entity.FilamentStock.class));
+        when(filamentStockMapperMock.toResponse(any())).thenReturn(mock(FilamentStockResponse.class));
         
         ReflectionTestUtils.setField(orderService, "supplierMapper", supplierMapperMock);
         ReflectionTestUtils.setField(orderService, "filamentStockMapper", filamentStockMapperMock);

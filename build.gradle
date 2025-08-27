@@ -49,6 +49,9 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
     implementation project(':shopify-integration')
+	implementation project(':infrastructure')
+	implementation project(':domain')
+	implementation project(':common')
 }
 
 tasks.named('test') {

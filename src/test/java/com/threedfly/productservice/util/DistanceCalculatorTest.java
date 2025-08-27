@@ -1,6 +1,7 @@
 package com.threedfly.productservice.util;
 
 import org.junit.jupiter.api.Test;
+import util.DistanceCalculator;
 
 import static org.junit.jupiter.api.Assertions.*;
 

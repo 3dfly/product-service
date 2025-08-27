@@ -1,4 +1,5 @@
 rootProject.name = 'product-service' 
 include 'shopify-integration'
-include 'shopify'
-
+include 'common'
+include 'domain'
+include 'infrastructure'

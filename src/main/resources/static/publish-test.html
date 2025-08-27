@@ -195,6 +195,22 @@
             </form>
         </div>
 
+        <!-- Product Information Display -->
+        <div class="section">
+            <h2>📋 Product Information</h2>
+            <div id="productInfo" style="padding: 15px; background-color: #f9f9f9; border-radius: 5px; margin-bottom: 20px;">
+                <button type="button" onclick="loadProductInfo()" style="margin-bottom: 15px;">Load Product Info</button>
+                <div id="productDetails" style="display: none;">
+                    <div style="margin-bottom: 10px;"><strong>Product ID:</strong> <span id="displayProductId">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Title:</strong> <span id="displayTitle">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Description:</strong> <span id="displayDescription">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Price:</strong> $<span id="displayPrice">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Has Image:</strong> <span id="displayHasImage">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Has STL File:</strong> <span id="displayHasStl">-</span></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Publish Form -->
         <div class="section">
             <h2>🚀 Publish to Shopify</h2>
@@ -210,23 +226,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="title">Product Title:</label>
-                    <input type="text" id="title" name="title" value="3D Printed Squirtle" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description:</label>
-                    <textarea id="description" name="description" placeholder="Enter product description">&lt;p&gt;Amazing 3D printed Squirtle figure&lt;/p&gt;</textarea>
-                </div>
-
-                <div class="form-group">
                     <label for="vendor">Vendor:</label>
                     <input type="text" id="vendor" name="vendor" value="My 3D Print Shop">
-                </div>
-
-                <div class="form-group">
-                    <label for="price">Price:</label>
-                    <input type="text" id="price" name="price" value="25.00" placeholder="25.00">
                 </div>
 
                 <div class="form-group">
@@ -238,18 +239,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="images">Upload Images:</label>
-                    <input type="file" id="images" name="images" multiple accept="image/*" onchange="previewImage()">
-                    <img id="imagePreview" style="display: none;">
-                </div>
-
-                <div class="form-group">
-                    <label for="stlFiles">Upload STL Files (3D Models):</label>
-                    <input type="file" id="stlFiles" name="stlFiles" multiple accept=".stl" onchange="showStlInfo()">
-                    <div id="stlInfo" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
-                    <div style="margin-top: 5px; font-size: 11px; color: #888; font-style: italic;">
-                        ℹ️ Note: STL files are stored locally and will NOT appear in Shopify (Shopify doesn't support 3D models). They're for platform use only.<br>
-                    ✨ <strong>Fixed:</strong> Products now have prices and auto-publish to Online Store with enhanced error handling!
+                    <div style="padding: 15px; background-color: #e8f5e8; border-radius: 5px; border-left: 4px solid #4caf50;">
+                        ℹ️ <strong>Note:</strong> Product title, description, price, and files are automatically retrieved from the stored product. 
+                        Only Shopify-specific settings (vendor, status) need to be configured here.
                     </div>
                 </div>
 
@@ -261,37 +253,7 @@
     </div>
 
     <script>
-        function previewImage() {
-            const input = document.getElementById('images');
-            const preview = document.getElementById('imagePreview');
-            
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function showStlInfo() {
-            const input = document.getElementById('stlFiles');
-            const info = document.getElementById('stlInfo');
-            
-            if (input.files && input.files.length > 0) {
-                let infoText = `Selected ${input.files.length} STL file(s):<br>`;
-                for (let i = 0; i < input.files.length; i++) {
-                    const file = input.files[i];
-                    const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
-                    infoText += `📁 ${file.name} (${sizeInMB} MB)<br>`;
-                }
-                info.innerHTML = infoText;
-                info.style.display = 'block';
-            } else {
-                info.style.display = 'none';
-            }
-        }
+        // Removed previewImage() and showStlInfo() functions since publishing no longer requires file uploads
 
         function previewProductImage() {
             const input = document.getElementById('productImageFile');
@@ -439,45 +401,61 @@
             }
         }
 
+        async function loadProductInfo() {
+            const productId = document.getElementById('productId').value;
+            if (!productId) {
+                showResponse('❌ Please enter a Product ID first', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/products/${productId}`);
+                const product = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('displayProductId').textContent = product.id;
+                    document.getElementById('displayTitle').textContent = product.name;
+                    document.getElementById('displayDescription').textContent = product.description || 'No description';
+                    document.getElementById('displayPrice').textContent = product.price;
+                    document.getElementById('displayHasImage').textContent = product.hasImage ? 'Yes' : 'No';
+                    document.getElementById('displayHasStl').textContent = product.hasStlFile ? 'Yes' : 'No';
+                    
+                    document.getElementById('productDetails').style.display = 'block';
+                    showResponse(`✅ Product information loaded for ID: ${productId}`, 'success');
+                } else {
+                    showResponse(`❌ Error loading product: ${product.message || 'Product not found'}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
         document.getElementById('publishForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             showResponse('Publishing to Shopify...', 'info');
             
-            const formData = new FormData();
-            
-            // Create request object
+            // Create request object with only Shopify-specific fields
+            // Product title, description, and price will be retrieved from the Product entity
             const requestData = {
                 integrationAccountId: parseInt(document.getElementById('integrationAccountId').value),
-                title: document.getElementById('title').value,
-                descriptionHtml: document.getElementById('description').value,
-                vendor: document.getElementById('vendor').value,
-                price: document.getElementById('price').value,
                 status: document.getElementById('status').value
             };
             
-            // Add JSON data
-            formData.append('request', new Blob([JSON.stringify(requestData)], {
-                type: 'application/json'
-            }));
-            
-            // Add images
-            const imageFiles = document.getElementById('images').files;
-            for (let i = 0; i < imageFiles.length; i++) {
-                formData.append('images', imageFiles[i]);
-            }
-            
-            // Add STL files
-            const stlFiles = document.getElementById('stlFiles').files;
-            for (let i = 0; i < stlFiles.length; i++) {
-                formData.append('stlFiles', stlFiles[i]);
+            // Add vendor if provided
+            const vendor = document.getElementById('vendor').value;
+            if (vendor && vendor.trim()) {
+                requestData.vendor = vendor.trim();
             }
             
             try {
                 const productId = document.getElementById('productId').value;
                 const response = await fetch(`/products/${productId}/publish/shopify`, {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
                 });
                 
                 const result = await response.text();

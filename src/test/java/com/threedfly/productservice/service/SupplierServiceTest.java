@@ -1,10 +1,11 @@
 package com.threedfly.productservice.service;
 
-import com.threedfly.productservice.dto.SupplierRequest;
-import com.threedfly.productservice.dto.SupplierResponse;
-import com.threedfly.productservice.entity.Supplier;
-import com.threedfly.productservice.mapper.SupplierMapper;
-import com.threedfly.productservice.repository.SupplierRepository;
+import dto.SupplierRequest;
+import dto.SupplierResponse;
+import entity.Supplier;
+import mapper.SupplierMapper;
+import repository.SupplierRepository;
+import service.SupplierService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

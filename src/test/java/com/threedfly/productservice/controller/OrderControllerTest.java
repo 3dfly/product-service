@@ -1,17 +1,20 @@
 package com.threedfly.productservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.threedfly.productservice.dto.ClosestSupplierResponse;
-import com.threedfly.productservice.dto.FilamentStockResponse;
-import com.threedfly.productservice.dto.OrderRequest;
-import com.threedfly.productservice.dto.SupplierResponse;
-import com.threedfly.productservice.entity.FilamentType;
-import com.threedfly.productservice.service.OrderService;
+import dto.ClosestSupplierResponse;
+import dto.FilamentStockResponse;
+import dto.OrderRequest;
+import dto.SupplierResponse;
+import entity.FilamentType;
+import service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,9 +23,15 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.threedfly.productservice.exception.SupplierNotFoundException;
+import exception.SupplierNotFoundException;
 
-@WebMvcTest(OrderController.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@TestPropertySource(properties = {
+    "ngrok.auto-start.enabled=false",
+    "spring.jpa.hibernate.ddl-auto=create-drop"
+})
 class OrderControllerTest {
 
     @Autowired

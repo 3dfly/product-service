@@ -1,13 +1,14 @@
 package com.threedfly.productservice.service;
 
-import com.threedfly.productservice.dto.FilamentStockRequest;
-import com.threedfly.productservice.dto.FilamentStockResponse;
-import com.threedfly.productservice.entity.FilamentStock;
-import com.threedfly.productservice.entity.FilamentType;
-import com.threedfly.productservice.entity.Supplier;
-import com.threedfly.productservice.mapper.FilamentStockMapper;
-import com.threedfly.productservice.repository.FilamentStockRepository;
-import com.threedfly.productservice.repository.SupplierRepository;
+import dto.FilamentStockRequest;
+import dto.FilamentStockResponse;
+import entity.FilamentStock;
+import entity.FilamentType;
+import entity.Supplier;
+import mapper.FilamentStockMapper;
+import repository.FilamentStockRepository;
+import repository.SupplierRepository;
+import service.FilamentStockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

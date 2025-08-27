@@ -2,14 +2,13 @@ package com.threedfly.productservice.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.threedfly.productservice.entity.IntegrationAccount;
-import com.threedfly.productservice.entity.Shop;
-import com.threedfly.productservice.entity.ShopType;
-import com.threedfly.productservice.repository.IntegrationAccountRepository;
-import com.threedfly.productservice.repository.ShopRepository;
+import entity.IntegrationAccount;
+import entity.Shop;
+import entity.ShopType;
+import repository.IntegrationAccountRepository;
+import repository.ShopRepository;
 import com.threedfly.shopify.config.ShopifyConfig;
 import com.threedfly.shopify.service.ShopifyAuthService;
-import com.threedfly.shopify.util.HmacVerifier;
 import jakarta.servlet.http.HttpServletResponse;
 
 import okhttp3.*;
