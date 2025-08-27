@@ -1,8 +1,8 @@
 package com.threedfly.productservice.controller;
 
-import com.threedfly.productservice.dto.ClosestSupplierResponse;
-import com.threedfly.productservice.dto.OrderRequest;
-import com.threedfly.productservice.service.OrderService;
+import dto.ClosestSupplierResponse;
+import dto.OrderRequest;
+import service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -1,8 +1,8 @@
 package com.threedfly.productservice.controller;
 
-import com.threedfly.productservice.dto.SupplierRequest;
-import com.threedfly.productservice.dto.SupplierResponse;
-import com.threedfly.productservice.service.SupplierService;
+import dto.SupplierRequest;
+import dto.SupplierResponse;
+import service.SupplierService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;

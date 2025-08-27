@@ -1,9 +1,7 @@
 package com.threedfly.productservice.config;
 
-import com.threedfly.productservice.exception.BaseException;
-import com.threedfly.productservice.exception.ErrorResponse;
-import com.threedfly.productservice.exception.StockDataInconsistencyException;
-import com.threedfly.productservice.exception.SupplierNotFoundException;
+import exception.BaseException;
+import exception.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

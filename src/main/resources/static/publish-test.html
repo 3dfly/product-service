@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Service - Shopify Publisher</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        #imagePreview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛍️ Product Service - Shopify Publisher</h1>
+        
+        <!-- Authentication Section -->
+        <div class="section">
+            <h2>🔐 Shopify Authentication</h2>
+            <div id="authStatus" class="info response" style="display: block;">
+                <strong>Authentication Status:</strong> Checking...
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <h3>🚀 Connect to Shopify</h3>
+                <div class="form-group">
+                    <label for="shopifyDomain">Shopify Store Domain:</label>
+                    <input type="text" id="shopifyDomain" placeholder="mystore.myshopify.com" style="width: 70%; display: inline-block;">
+                    <button onclick="authenticateShopify()" style="width: 25%; display: inline-block; margin-left: 5px;">Connect</button>
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                    💡 Enter your Shopify store domain (e.g., mystore.myshopify.com) to start the OAuth authentication process.
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="checkAuthentication()" style="width: auto; margin-right: 10px;">🔄 Refresh Auth Status</button>
+                <button onclick="listIntegrationAccounts()" style="width: auto;">📋 List Accounts</button>
+            </div>
+        </div>
+
+        <!-- Setup Section -->
+        <div class="section">
+            <h2>📋 Setup Required</h2>
+            <div id="setupInfo" class="info response" style="display: block;">
+                <strong>Before publishing:</strong><br>
+                1. ✅ Connect to Shopify (see Authentication section above)<br>
+                2. Create a shop and product using the API<br>
+                3. Configure ngrok for public image access (optional)
+            </div>
+            <button onclick="checkSetup()" style="margin-top: 10px; width: auto;">Check Setup</button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
+            <h2>⚡ Quick Actions</h2>
+            <button onclick="createTestData()" style="width: auto; margin-right: 10px;">Create Test Shop & Product</button>
+            <button onclick="checkProducts()" style="width: auto; margin-right: 10px;">List All Products</button>
+            <button onclick="deleteProductFromShopify()" style="width: auto; background-color: #dc3545; color: white;">Delete Product from Shopify</button>
+        </div>
+
+        <!-- Create Product with Files -->
+        <div class="section">
+            <h2>➕ Create Product with Files</h2>
+            <form id="createProductForm">
+                <div class="form-group">
+                    <label for="productName">Product Name:</label>
+                    <input type="text" id="productName" name="name" value="Custom 3D Print" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="productDescription">Description:</label>
+                    <textarea id="productDescription" name="description" placeholder="Product description">High-quality 3D printed item</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="productPrice">Price:</label>
+                    <input type="number" id="productPrice" name="price" value="29.99" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="sellerId">Seller ID:</label>
+                    <input type="number" id="sellerId" name="sellerId" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="shopId">Shop ID:</label>
+                    <input type="number" id="shopId" name="shopId" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="productImageFile">Upload Product Image:</label>
+                    <input type="file" id="productImageFile" name="imageFile" accept="image/*" onchange="previewProductImage()">
+                    <img id="productImagePreview" style="display: none; max-width: 200px; max-height: 200px; margin-top: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="productStlFile">Upload STL File:</label>
+                    <input type="file" id="productStlFile" name="stlFile" accept=".stl" onchange="showProductStlInfo()">
+                    <div id="productStlInfo" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+                    <div style="margin-top: 5px; font-size: 11px; color: #888; font-style: italic;">
+                        ℹ️ STL files are stored locally for platform use (customer downloads, 3D printing). They won't appear in Shopify.
+                    </div>
+                </div>
+
+                <button type="submit">Create Product</button>
+            </form>
+        </div>
+
+        <!-- Product Information Display -->
+        <div class="section">
+            <h2>📋 Product Information</h2>
+            <div id="productInfo" style="padding: 15px; background-color: #f9f9f9; border-radius: 5px; margin-bottom: 20px;">
+                <button type="button" onclick="loadProductInfo()" style="margin-bottom: 15px;">Load Product Info</button>
+                <div id="productDetails" style="display: none;">
+                    <div style="margin-bottom: 10px;"><strong>Product ID:</strong> <span id="displayProductId">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Title:</strong> <span id="displayTitle">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Description:</strong> <span id="displayDescription">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Price:</strong> $<span id="displayPrice">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Has Image:</strong> <span id="displayHasImage">-</span></div>
+                    <div style="margin-bottom: 10px;"><strong>Has STL File:</strong> <span id="displayHasStl">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Publish Form -->
+        <div class="section">
+            <h2>🚀 Publish to Shopify</h2>
+            <form id="publishForm">
+                <div class="form-group">
+                    <label for="productId">Product ID:</label>
+                    <input type="number" id="productId" name="productId" value="2" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="integrationAccountId">Integration Account ID:</label>
+                    <input type="number" id="integrationAccountId" name="integrationAccountId" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="vendor">Vendor:</label>
+                    <input type="text" id="vendor" name="vendor" value="My 3D Print Shop">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status:</label>
+                    <select id="status" name="status">
+                        <option value="ACTIVE" selected>Active</option>
+                        <option value="DRAFT">Draft</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div style="padding: 15px; background-color: #e8f5e8; border-radius: 5px; border-left: 4px solid #4caf50;">
+                        ℹ️ <strong>Note:</strong> Product title, description, price, and files are automatically retrieved from the stored product. 
+                        Only Shopify-specific settings (vendor, status) need to be configured here.
+                    </div>
+                </div>
+
+                <button type="submit">Publish to Shopify</button>
+            </form>
+        </div>
+
+        <div id="response" class="response"></div>
+    </div>
+
+    <script>
+        // Removed previewImage() and showStlInfo() functions since publishing no longer requires file uploads
+
+        function previewProductImage() {
+            const input = document.getElementById('productImageFile');
+            const preview = document.getElementById('productImagePreview');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function showProductStlInfo() {
+            const input = document.getElementById('productStlFile');
+            const info = document.getElementById('productStlInfo');
+            
+            if (input.files && input.files.length > 0) {
+                const file = input.files[0];
+                const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
+                info.innerHTML = `📁 ${file.name} (${sizeInMB} MB)`;
+                info.style.display = 'block';
+            } else {
+                info.style.display = 'none';
+            }
+        }
+
+        async function checkSetup() {
+            showResponse('Checking setup...', 'info');
+            try {
+                // Check if shops exist
+                const shopsResponse = await fetch('/shops');
+                const shops = await shopsResponse.json();
+                
+                // Check if products exist
+                const productsResponse = await fetch('/products');
+                const products = await productsResponse.json();
+
+                let message = `Setup Status:\n`;
+                message += `✅ Shops: ${shops.length} found\n`;
+                message += `✅ Products: ${products.length} found\n`;
+                
+                if (shops.length > 0) {
+                    message += `\nLatest Shop: ID ${shops[shops.length-1].id} - ${shops[shops.length-1].name}`;
+                }
+                if (products.length > 0) {
+                    message += `\nLatest Product: ID ${products[products.length-1].id} - ${products[products.length-1].name}`;
+                    document.getElementById('productId').value = products[products.length-1].id;
+                }
+
+                showResponse(message, 'success');
+            } catch (error) {
+                showResponse('Error checking setup: ' + error.message, 'error');
+            }
+        }
+
+        async function createTestData() {
+            showResponse('Creating test data...', 'info');
+            try {
+                // Create shop
+                const shopResponse = await fetch('/shops', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sellerId: 1,
+                        name: "My 3D Print Shop",
+                        description: "Custom 3D printing services",
+                        address: "123 Main St",
+                        contactInfo: "contact@shop.com"
+                    })
+                });
+                const shop = await shopResponse.json();
+
+                // Create product
+                const productResponse = await fetch('/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: "3D Printed Squirtle",
+                        description: "Custom Squirtle figure",
+                        price: 25.99,
+                        imageUrl: "https://example.com/squirtle.jpg",
+                        sellerId: 1,
+                        shopId: shop.id
+                    })
+                });
+                const product = await productResponse.json();
+
+                document.getElementById('productId').value = product.id;
+                showResponse(`✅ Created Shop ID: ${shop.id}\n✅ Created Product ID: ${product.id}\n\nNow set up IntegrationAccount in H2 Console!`, 'success');
+            } catch (error) {
+                showResponse('Error creating test data: ' + error.message, 'error');
+            }
+        }
+
+        async function checkProducts() {
+            try {
+                const response = await fetch('/products');
+                const products = await response.json();
+                
+                let message = `Found ${products.length} products:\n\n`;
+                products.forEach(p => {
+                    message += `ID: ${p.id} - ${p.name} (₪${p.price})\n`;
+                });
+                
+                showResponse(message, 'info');
+            } catch (error) {
+                showResponse('Error fetching products: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteProductFromShopify() {
+            const productId = document.getElementById('productId').value;
+            if (!productId) {
+                showResponse('❌ Please enter a Product ID first', 'error');
+                return;
+            }
+            
+            const confirmed = confirm(`Are you sure you want to delete product ${productId} from both Shopify AND local database? This cannot be undone!`);
+            if (!confirmed) {
+                return;
+            }
+            
+            showResponse(`🗑️ Deleting product ${productId} from Shopify and local database...`, 'info');
+            
+            try {
+                const response = await fetch(`/products/${productId}/shopify`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Product deleted successfully!<br>Product ID: ${result.productId}<br>Deleted from Shopify: ${result.shopifyDeleted ? 'Yes' : 'No (not published)'}<br>Message: ${result.message}`, 'success');
+                    
+                    // Clear the product ID field
+                    document.getElementById('productId').value = '';
+                } else {
+                    showResponse(`❌ Error deleting product: ${result.error || result.message || JSON.stringify(result)}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadProductInfo() {
+            const productId = document.getElementById('productId').value;
+            if (!productId) {
+                showResponse('❌ Please enter a Product ID first', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/products/${productId}`);
+                const product = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('displayProductId').textContent = product.id;
+                    document.getElementById('displayTitle').textContent = product.name;
+                    document.getElementById('displayDescription').textContent = product.description || 'No description';
+                    document.getElementById('displayPrice').textContent = product.price;
+                    document.getElementById('displayHasImage').textContent = product.hasImage ? 'Yes' : 'No';
+                    document.getElementById('displayHasStl').textContent = product.hasStlFile ? 'Yes' : 'No';
+                    
+                    document.getElementById('productDetails').style.display = 'block';
+                    showResponse(`✅ Product information loaded for ID: ${productId}`, 'success');
+                } else {
+                    showResponse(`❌ Error loading product: ${product.message || 'Product not found'}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        document.getElementById('publishForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            showResponse('Publishing to Shopify...', 'info');
+            
+            // Create request object with only Shopify-specific fields
+            // Product title, description, and price will be retrieved from the Product entity
+            const requestData = {
+                integrationAccountId: parseInt(document.getElementById('integrationAccountId').value),
+                status: document.getElementById('status').value
+            };
+            
+            // Add vendor if provided
+            const vendor = document.getElementById('vendor').value;
+            if (vendor && vendor.trim()) {
+                requestData.vendor = vendor.trim();
+            }
+            
+            try {
+                const productId = document.getElementById('productId').value;
+                const response = await fetch(`/products/${productId}/publish/shopify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.text();
+                
+                if (response.ok) {
+                    showResponse(`✅ Success! Product published to Shopify:\n${result}`, 'success');
+                } else {
+                    showResponse(`❌ Error: ${result}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Network Error: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('createProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            showResponse('Creating product...', 'info');
+            
+            const formData = new FormData();
+            
+            // Create product object
+            const productData = {
+                name: document.getElementById('productName').value,
+                description: document.getElementById('productDescription').value,
+                price: parseFloat(document.getElementById('productPrice').value),
+                sellerId: parseInt(document.getElementById('sellerId').value),
+                shopId: parseInt(document.getElementById('shopId').value)
+            };
+            
+            // Add JSON data
+            formData.append('product', new Blob([JSON.stringify(productData)], {
+                type: 'application/json'
+            }));
+            
+            // Add image file if selected
+            const imageFile = document.getElementById('productImageFile').files[0];
+            if (imageFile) {
+                formData.append('imageFile', imageFile);
+            }
+            
+            // Add STL file if selected
+            const stlFile = document.getElementById('productStlFile').files[0];
+            if (stlFile) {
+                formData.append('stlFile', stlFile);
+            }
+            
+            try {
+                const response = await fetch('/products', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Product created successfully!<br>ID: ${result.id}<br>Name: ${result.name}<br>Price: ₪${result.price}<br>${result.stlFileUrl ? 'STL File: ' + result.stlFileUrl + '<br>' : ''}${result.imageUrl ? 'Image: ' + result.imageUrl : ''}`, 'success');
+                    
+                    // Update product ID in publish form
+                    document.getElementById('productId').value = result.id;
+                    
+                    // Reset form
+                    document.getElementById('createProductForm').reset();
+                    document.getElementById('productImagePreview').style.display = 'none';
+                    document.getElementById('productStlInfo').style.display = 'none';
+                } else {
+                    showResponse(`❌ Error creating product: ${result.message || JSON.stringify(result)}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`❌ Network Error: ${error.message}`, 'error');
+            }
+        });
+
+        async function checkAuthentication() {
+            showAuthStatus('🔄 Checking authentication status...', 'info');
+            try {
+                // Use the new dedicated endpoint for integration accounts
+                const response = await fetch('/oauth/accounts');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const { totalAccounts, accounts } = data;
+                
+                let authMessage = '';
+                
+                if (totalAccounts > 0) {
+                    authMessage = `✅ AUTHENTICATED - Found ${totalAccounts} integration account(s):\n\n`;
+                    
+                    accounts.forEach(account => {
+                        authMessage += `🔗 Account ID: ${account.id}\n`;
+                        authMessage += `   Shop: ${account.externalShopId} (Internal ID: ${account.shopId})\n`;
+                        authMessage += `   Provider: ${account.provider}\n`;
+                        authMessage += `   Scopes: ${account.scopes}\n`;
+                        authMessage += `   Token Status: ${account.hasToken ? '✅ Valid' : '❌ Missing'}\n`;
+                        authMessage += `   Installed: ${account.installedAt ? new Date(account.installedAt).toLocaleString() : 'Unknown'}\n\n`;
+                    });
+                    
+                    // Update the integration account ID in the form
+                    if (accounts.length > 0) {
+                        document.getElementById('integrationAccountId').value = accounts[0].id;
+                    }
+                    
+                    showAuthStatus(authMessage, 'success');
+                } else {
+                    authMessage = `❌ NOT AUTHENTICATED - No Shopify connections found.\n\n🔑 Use "Connect to Shopify" above to authenticate.`;
+                    showAuthStatus(authMessage, 'error');
+                }
+                
+            } catch (error) {
+                showAuthStatus(`❌ Error checking authentication: ${error.message}`, 'error');
+            }
+        }
+
+        async function listIntegrationAccounts() {
+            showResponse('📋 Fetching integration accounts...', 'info');
+            try {
+                const response = await fetch('/oauth/accounts');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const { totalAccounts, accounts } = data;
+                
+                let accountsList = `Found ${totalAccounts} integration account(s):\n\n`;
+                
+                if (totalAccounts > 0) {
+                    accounts.forEach(account => {
+                        accountsList += `🔗 Integration Account ID: ${account.id}\n`;
+                        accountsList += `   Shopify Store: ${account.externalShopId}\n`;
+                        accountsList += `   Internal Shop ID: ${account.shopId}\n`;
+                        accountsList += `   Provider: ${account.provider}\n`;
+                        accountsList += `   Scopes: ${account.scopes}\n`;
+                        accountsList += `   Token Status: ${account.hasToken ? '✅ Valid' : '❌ Missing'}\n`;
+                        accountsList += `   Installed: ${account.installedAt ? new Date(account.installedAt).toLocaleString() : 'Unknown'}\n\n`;
+                    });
+                    
+                    accountsList += `💡 Use Integration Account ID "${accounts[0].id}" in the publish form below.`;
+                } else {
+                    accountsList += '🔑 No integration accounts found. Use "Connect to Shopify" above to authenticate.';
+                }
+                
+                showResponse(accountsList, totalAccounts > 0 ? 'success' : 'error');
+                
+            } catch (error) {
+                showResponse(`❌ Error fetching accounts: ${error.message}`, 'error');
+            }
+        }
+
+        function authenticateShopify() {
+            const domain = document.getElementById('shopifyDomain').value.trim();
+            
+            if (!domain) {
+                showAuthStatus('❌ Please enter a Shopify store domain', 'error');
+                return;
+            }
+            
+            // Validate domain format
+            if (!domain.includes('.myshopify.com') && !domain.includes('.shopify.com')) {
+                const confirmProceed = confirm(
+                    `The domain "${domain}" doesn't look like a Shopify domain.\n\n` +
+                    `Shopify domains usually end with .myshopify.com\n\n` +
+                    `Do you want to proceed anyway?`
+                );
+                if (!confirmProceed) {
+                    return;
+                }
+            }
+            
+            showAuthStatus(`🚀 Starting OAuth flow for ${domain}...`, 'info');
+            
+            // First, we need to find a shop ID to use, or create one
+            createShopForAuth(domain);
+        }
+
+        async function createShopForAuth(domain) {
+            try {
+                // Check if we already have a shop for this domain
+                const shopsResponse = await fetch('/shops');
+                const shops = await shopsResponse.json();
+                
+                const existingShop = shops.find(shop => 
+                    shop.name && shop.name.toLowerCase().includes(domain.split('.')[0].toLowerCase())
+                );
+                
+                let shopId;
+                if (existingShop) {
+                    shopId = existingShop.id;
+                    showAuthStatus(`✅ Using existing shop "${existingShop.name}" (ID: ${shopId})`, 'info');
+                } else {
+                    // Create a new shop for this Shopify store
+                    const shopName = domain.split('.')[0]; // Extract store name from domain
+                    const newShopResponse = await fetch('/shops', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sellerId: 1,
+                            name: shopName,
+                            description: `Shopify store: ${domain}`,
+                            address: 'N/A',
+                            contactInfo: domain
+                        })
+                    });
+                    
+                    if (newShopResponse.ok) {
+                        const newShop = await newShopResponse.json();
+                        shopId = newShop.id;
+                        showAuthStatus(`✅ Created new shop "${newShop.name}" (ID: ${shopId})`, 'success');
+                    } else {
+                        throw new Error('Failed to create shop');
+                    }
+                }
+                
+                // Now redirect to OAuth with the shop ID
+                const oauthUrl = `/oauth/install?shop=${encodeURIComponent(domain)}&internalShopId=${shopId}`;
+                showAuthStatus(`🔗 Redirecting to Shopify OAuth...\n\nURL: ${oauthUrl}`, 'info');
+                
+                // Redirect to OAuth
+                window.location.href = oauthUrl;
+                
+            } catch (error) {
+                showAuthStatus(`❌ Error setting up authentication: ${error.message}`, 'error');
+            }
+        }
+
+        function showAuthStatus(message, type) {
+            const authDiv = document.getElementById('authStatus');
+            authDiv.className = `response ${type}`;
+            authDiv.style.display = 'block';
+            authDiv.innerHTML = message.replace(/\n/g, '<br>');
+        }
+
+        function showResponse(message, type) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.className = `response ${type}`;
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = message.replace(/\n/g, '<br>');
+        }
+
+        // Check authentication status on page load
+        window.addEventListener('load', function() {
+            checkAuthentication();
+        });
+    </script>
+</body>
+</html>

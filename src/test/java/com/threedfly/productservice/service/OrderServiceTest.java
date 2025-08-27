@@ -1,18 +1,19 @@
 package com.threedfly.productservice.service;
 
-import com.threedfly.productservice.dto.ClosestSupplierResponse;
-import com.threedfly.productservice.dto.FilamentStockResponse;
-import com.threedfly.productservice.dto.GeocodingResponse;
-import com.threedfly.productservice.dto.OrderRequest;
-import com.threedfly.productservice.dto.SupplierResponse;
-import com.threedfly.productservice.entity.FilamentStock;
-import com.threedfly.productservice.entity.FilamentType;
-import com.threedfly.productservice.entity.Supplier;
-import com.threedfly.productservice.mapper.FilamentStockMapper;
-import com.threedfly.productservice.mapper.SupplierMapper;
+import dto.ClosestSupplierResponse;
+import dto.FilamentStockResponse;
+import dto.OrderRequest;
+import dto.SupplierResponse;
+import entity.FilamentStock;
+import entity.FilamentType;
+import entity.Supplier;
+import mapper.FilamentStockMapper;
+import mapper.SupplierMapper;
 
-import com.threedfly.productservice.repository.SupplierRepository;
-import com.threedfly.productservice.repository.projection.ClosetSupplierProjection;
+import repository.SupplierRepository;
+import repository.projection.ClosetSupplierProjection;
+import service.OrderService;
+import service.GeocodingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.withSettings;
 
-import com.threedfly.productservice.exception.SupplierNotFoundException;
+import exception.SupplierNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {

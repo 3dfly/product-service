@@ -1,9 +1,9 @@
 package com.threedfly.productservice.controller;
 
-import com.threedfly.productservice.dto.FilamentStockRequest;
-import com.threedfly.productservice.dto.FilamentStockResponse;
-import com.threedfly.productservice.entity.FilamentType;
-import com.threedfly.productservice.service.FilamentStockService;
+import dto.FilamentStockRequest;
+import dto.FilamentStockResponse;
+import entity.FilamentType;
+import service.FilamentStockService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
