@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify Billing Test Interface</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .section {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #17a2b8;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #dc3545;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .container { padding: 20px; }
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛒 Shopify Billing Test Interface</h1>
+        <p>Test Shopify App Billing functionality - subscriptions, usage records, and credits</p>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="container">
+        <h2>🔗 Connection Status</h2>
+        <button onclick="loadConnectedShops()">Refresh Connected Shops</button>
+        <div id="connectionStatus" class="result">Loading...</div>
+    </div>
+
+    <div class="grid">
+        <!-- Subscription Management -->
+        <div class="container">
+            <h2>📋 Subscription Management</h2>
+            
+            <div class="instructions">
+                <strong>📖 Instructions:</strong>
+                <ol>
+                    <li>Make sure your shop is connected via OAuth first</li>
+                    <li>Create a subscription with a capped amount</li>
+                    <li>Visit the confirmation URL to approve it in Shopify</li>
+                    <li>Then test usage records</li>
+                </ol>
+            </div>
+            
+            <div class="section">
+                <h3>Create Billing Subscription</h3>
+                <div class="form-group">
+                    <label for="shopDomain">Shop Domain:</label>
+                    <input type="text" id="shopDomain" placeholder="mystore.myshopify.com">
+                </div>
+                <div class="form-group">
+                    <label for="subscriptionName">Subscription Name:</label>
+                    <input type="text" id="subscriptionName" value="3D Fly Platform Fee">
+                </div>
+                <div class="form-group">
+                    <label for="cappedAmount">Capped Amount ($):</label>
+                    <input type="number" id="cappedAmount" value="100.00" step="0.01">
+                </div>
+                <button onclick="createSubscription()">Create Subscription</button>
+            </div>
+        </div>
+
+        <!-- Usage Records -->
+        <div class="container">
+            <h2>💰 Usage Records (Charges)</h2>
+            
+            <div class="instructions">
+                <strong>⚠️ Note:</strong> You need a subscription line item ID from an approved subscription to create usage records.
+            </div>
+            
+            <div class="section">
+                <h3>Create Usage Record</h3>
+                <div class="form-group">
+                    <label for="usageShopDomain">Shop Domain:</label>
+                    <input type="text" id="usageShopDomain" placeholder="mystore.myshopify.com">
+                </div>
+                <div class="form-group">
+                    <label for="subscriptionLineItemId">Subscription Line Item ID:</label>
+                    <input type="text" id="subscriptionLineItemId" placeholder="gid://shopify/AppSubscriptionLineItem/123">
+                    <small>Get this from the subscription creation response</small>
+                </div>
+                <div class="form-group">
+                    <label for="usageAmount">Amount ($):</label>
+                    <input type="number" id="usageAmount" value="5.00" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="usageDescription">Description:</label>
+                    <input type="text" id="usageDescription" value="Platform fee for order #1001">
+                </div>
+                <button onclick="createUsageRecord()">Create Usage Record</button>
+            </div>
+
+            <div class="section">
+                <h3>🚫 Cancel Subscription</h3>
+                <div class="instructions">
+                    <strong>⚠️ Warning:</strong> This will permanently cancel the subscription and stop all future billing.
+                </div>
+                <div class="form-group">
+                    <label for="cancelShopDomain">Shop Domain:</label>
+                    <input type="text" id="cancelShopDomain" placeholder="mystore.myshopify.com">
+                </div>
+                <div class="form-group">
+                    <label for="cancelSubscriptionId">App Subscription ID:</label>
+                    <input type="text" id="cancelSubscriptionId" placeholder="gid://shopify/AppSubscription/12345">
+                    <small>Get this from the subscription creation response</small>
+                </div>
+                <button onclick="cancelSubscription()" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">Cancel Subscription</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Testing & Documentation -->
+    <div class="container">
+        <h2>🧪 Testing Guide</h2>
+        
+        <div class="section">
+            <h3>Step-by-Step Testing Process</h3>
+            <ol>
+                <li><strong>Connect Shop:</strong> Use OAuth to connect your Shopify store first</li>
+                <li><strong>Create Subscription:</strong> Use the form above to create a billing subscription</li>
+                <li><strong>Approve Subscription:</strong> Visit the confirmation URL from the response</li>
+                <li><strong>Get Line Item ID:</strong> Copy the subscription line item ID from the response</li>
+                <li><strong>Create Usage Records:</strong> Test charging fees using the usage records form</li>
+                <li><strong>Monitor in Shopify:</strong> Check your Shopify Partner Dashboard for billing data</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h3>📚 Key Concepts</h3>
+            <ul>
+                <li><strong>App Subscription:</strong> The billing container with a capped amount</li>
+                <li><strong>Usage Records:</strong> Individual charges for orders/services</li>
+                <li><strong>Capped Amount:</strong> Maximum billing in a period (prevents runaway charges)</li>
+                <li><strong>Confirmation URL:</strong> Merchant approves billing in Shopify admin</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Results Area -->
+    <div class="container">
+        <h2>📋 Results & Responses</h2>
+        <div id="results" class="result">Ready for testing...</div>
+    </div>
+
+    <script>
+        const baseUrl = window.location.origin;
+        
+        function showResult(data, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.textContent = JSON.stringify(data, null, 2);
+            resultsDiv.className = isError ? 'result error' : 'result success';
+        }
+
+        async function apiCall(url, method = 'GET', body = null) {
+            try {
+                const options = {
+                    method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (body) {
+                    if (typeof body === 'object') {
+                        options.body = JSON.stringify(body);
+                    } else {
+                        options.body = body;
+                    }
+                }
+                
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showResult(data, true);
+                } else {
+                    showResult(data);
+                }
+                return data;
+            } catch (error) {
+                showResult({ error: error.message }, true);
+            }
+        }
+
+        async function loadConnectedShops() {
+            const data = await apiCall(`${baseUrl}/billing-test/connected-shops`);
+            if (data && data.connectedShops) {
+                const statusDiv = document.getElementById('connectionStatus');
+                if (data.connectedShops.length === 0) {
+                    statusDiv.innerHTML = '<span class="status-indicator status-error"></span>No shops connected. Connect via OAuth first.';
+                } else {
+                    const shopsHtml = data.connectedShops.map(shop => 
+                        `<div><span class="status-indicator status-connected"></span><strong>${shop.shopDomain}</strong> (ID: ${shop.id}) - ${shop.scopes}</div>`
+                    ).join('');
+                    statusDiv.innerHTML = `<div>Connected Shops (${data.totalShops}):</div>${shopsHtml}`;
+                }
+            }
+        }
+
+        async function createSubscription() {
+            const shopDomain = document.getElementById('shopDomain').value;
+            const subscriptionName = document.getElementById('subscriptionName').value;
+            const cappedAmount = document.getElementById('cappedAmount').value;
+            
+            if (!shopDomain) {
+                alert('Please enter shop domain');
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                shopDomain,
+                subscriptionName,
+                cappedAmount
+            });
+            
+            const result = await apiCall(`${baseUrl}/billing-test/create-subscription?${params}`, 'POST');
+            
+            if (result && result.confirmationUrl) {
+                const confirmDiv = document.createElement('div');
+                confirmDiv.className = 'success';
+                confirmDiv.innerHTML = `
+                    <strong>✅ Subscription Created!</strong><br>
+                    <strong>Confirmation URL:</strong> <a href="${result.confirmationUrl}" target="_blank">${result.confirmationUrl}</a><br>
+                    <em>Click the link above to approve the subscription in Shopify.</em>
+                `;
+                document.getElementById('results').parentNode.insertBefore(confirmDiv, document.getElementById('results'));
+            }
+        }
+
+        async function createUsageRecord() {
+            const shopDomain = document.getElementById('usageShopDomain').value;
+            const subscriptionLineItemId = document.getElementById('subscriptionLineItemId').value;
+            const amount = document.getElementById('usageAmount').value;
+            const description = document.getElementById('usageDescription').value;
+            
+            if (!shopDomain || !subscriptionLineItemId) {
+                alert('Please enter shop domain and subscription line item ID');
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                shopDomain,
+                subscriptionLineItemId,
+                amount,
+                description
+            });
+            
+            await apiCall(`${baseUrl}/billing-test/create-usage-record?${params}`, 'POST');
+        }
+
+        async function cancelSubscription() {
+            const shopDomain = document.getElementById('cancelShopDomain').value;
+            const appSubscriptionId = document.getElementById('cancelSubscriptionId').value;
+            
+            if (!shopDomain || !appSubscriptionId) {
+                alert('Please enter shop domain and app subscription ID');
+                return;
+            }
+            
+            // Confirm cancellation
+            if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                shopDomain,
+                appSubscriptionId
+            });
+            
+            const result = await apiCall(`${baseUrl}/billing-test/cancel-subscription?${params}`, 'POST');
+            
+            if (result && result.success) {
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success';
+                successDiv.innerHTML = `
+                    <strong>✅ Subscription Canceled!</strong><br>
+                    <strong>Subscription ID:</strong> ${result.appSubscriptionId}<br>
+                    <strong>Status:</strong> ${result.status}<br>
+                    <em>The subscription has been permanently canceled.</em>
+                `;
+                document.getElementById('results').parentNode.insertBefore(successDiv, document.getElementById('results'));
+            }
+        }
+
+        // Load connected shops on page load
+        window.onload = function() {
+            loadConnectedShops();
+        };
+    </script>
+</body>
+</html>
