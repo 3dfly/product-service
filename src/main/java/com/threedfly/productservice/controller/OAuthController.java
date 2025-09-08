@@ -111,6 +111,21 @@ public class OAuthController {
         res.sendRedirect(authService.buildInstallUrl(shop, state));
     }
 
+    // Generic OAuth: /oauth/connect (user selects shop on Shopify)
+    @GetMapping("/oauth/connect")
+    public void connectShopify(HttpServletResponse res) throws IOException {
+        System.out.println("🚀 Generic Shopify OAuth initiated - user will select shop on Shopify");
+        
+        String state = authService.newState();
+        // For generic flow, we'll create/find the shop after OAuth callback
+        // Use a special marker to indicate this is a generic flow
+        stateToShopId.put(state, -1L); // -1 indicates generic flow
+        
+        String oauthUrl = authService.buildGenericOAuthUrl(state);
+        System.out.println("🔗 Redirecting to generic OAuth: " + oauthUrl);
+        res.sendRedirect(oauthUrl);
+    }
+
     // OAuth callback
     @GetMapping("/oauth/callback")
     public String callback(@RequestParam Map<String,String> params) throws IOException {
@@ -135,6 +150,13 @@ public class OAuthController {
             System.err.println("❌ State not found: " + state);
             System.err.println("  Available states: " + stateToShopId.keySet());
             return "⚠️ Invalid or expired state: " + state + ". Please reinstall the app.";
+        }
+
+        // Handle generic OAuth flow (when user selected shop on Shopify)
+        if (internalShopId == -1L) {
+            System.out.println("🔄 Processing generic OAuth flow - creating/finding shop for: " + shop);
+            internalShopId = findOrCreateShop(shop);
+            System.out.println("✅ Using shop ID: " + internalShopId + " for shop: " + shop);
         }
 
                  // Exchange code → token
@@ -188,9 +210,11 @@ public class OAuthController {
              System.out.println("  Internal Shop ID: " + internalShopId);
              System.out.println("  Scopes: " + scopes);
              
+             String flowType = (internalShopId > 0) ? "Generic OAuth Flow (Shop Selected on Shopify)" : "Manual Installation";
              return """
                  <html><body>
                  <h2>✅ 3D Fly App Installed Successfully!</h2>
+                 <p><strong>Connection Type:</strong> %s</p>
                  <p><strong>Shop:</strong> %s</p>
                  <p><strong>Integration Account ID:</strong> %s</p>
                  <p><strong>Internal Shop ID:</strong> %s</p>
@@ -202,9 +226,10 @@ public class OAuthController {
                      <li>Create products in your local system</li>
                      <li>Use Integration Account ID <strong>%s</strong> to publish them to Shopify</li>
                      <li><a href="http://localhost:8081/publish-test.html">🚀 Try Publishing Interface</a></li>
+                     <li><a href="http://localhost:8081/billing-test.html">💰 Try Billing Interface</a></li>
                  </ol>
                  </body></html>
-                 """.formatted(shop, saved.getId(), internalShopId, scopes, saved.getId());
+                 """.formatted(flowType, shop, saved.getId(), internalShopId, scopes, saved.getId());
         }
     }
 

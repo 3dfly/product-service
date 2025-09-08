@@ -111,13 +111,29 @@
             
             <div style="margin-top: 15px;">
                 <h3>🚀 Connect to Shopify</h3>
-                <div class="form-group">
-                    <label for="shopifyDomain">Shopify Store Domain:</label>
-                    <input type="text" id="shopifyDomain" placeholder="mystore.myshopify.com" style="width: 70%; display: inline-block;">
-                    <button onclick="authenticateShopify()" style="width: 25%; display: inline-block; margin-left: 5px;">Connect</button>
+                
+                <!-- One-Click Connect Button -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f5e8; border-radius: 5px; border-left: 4px solid #4caf50;">
+                    <h4 style="margin: 0 0 10px 0; color: #2e7d2e;">✨ Recommended: One-Click Connect</h4>
+                    <button onclick="connectWithShopify()" style="background: linear-gradient(135deg, #96bf48 0%, #5b8930 100%); width: auto; margin: 0; padding: 15px 30px; font-size: 16px;">
+                        🛍️ Connect with Shopify
+                    </button>
+                    <div style="font-size: 12px; color: #555; margin-top: 10px;">
+                        🎯 Click above to log in to Shopify and select your store (like Google auth)
+                    </div>
                 </div>
-                <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                    💡 Enter your Shopify store domain (e.g., mystore.myshopify.com) to start the OAuth authentication process.
+                
+                <!-- Manual Domain Entry -->
+                <div style="padding: 15px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #6c757d;">
+                    <h4 style="margin: 0 0 10px 0; color: #495057;">🔧 Advanced: Manual Domain Entry</h4>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="shopifyDomain">Shopify Store Domain:</label>
+                        <input type="text" id="shopifyDomain" placeholder="mystore.myshopify.com" style="width: 70%; display: inline-block;">
+                        <button onclick="authenticateShopify()" style="width: 25%; display: inline-block; margin-left: 5px;">Connect</button>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        💡 For advanced users: Enter your exact Shopify store domain if you know it
+                    </div>
                 </div>
             </div>
             
@@ -607,6 +623,14 @@
             } catch (error) {
                 showResponse(`❌ Error fetching accounts: ${error.message}`, 'error');
             }
+        }
+
+        function connectWithShopify() {
+            // Redirect to the generic OAuth endpoint
+            // User will be taken to Shopify to log in and select their store
+            showAuthStatus('🚀 Initiating Shopify connection...', 'info');
+            console.log('🚀 Initiating Shopify connection...');
+            window.location.href = '/oauth/connect';
         }
 
         function authenticateShopify() {

@@ -18,7 +18,22 @@ public class ShopifyAuthService {
 
     public String buildInstallUrl(String shopDomain, String state){
         return UriComponentsBuilder
-                .fromHttpUrl("https://" + shopDomain + "/admin/oauth/authorize")
+                .fromUriString("https://" + shopDomain + "/admin/oauth/authorize")
+                .queryParam("client_id", cfg.apiKey)
+                .queryParam("scope", cfg.scopes)
+                .queryParam("redirect_uri", URLEncoder.encode(cfg.redirectUri, StandardCharsets.UTF_8))
+                .queryParam("state", state)
+                .build(true)
+                .toUriString();
+    }
+
+    /**
+     * Build generic OAuth URL where user can select their shop
+     * This allows for a "Connect with Shopify" button experience
+     */
+    public String buildGenericOAuthUrl(String state){
+        return UriComponentsBuilder
+                .fromUriString("https://shopify.com/admin/oauth/authorize")
                 .queryParam("client_id", cfg.apiKey)
                 .queryParam("scope", cfg.scopes)
                 .queryParam("redirect_uri", URLEncoder.encode(cfg.redirectUri, StandardCharsets.UTF_8))

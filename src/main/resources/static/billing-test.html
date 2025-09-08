@@ -138,7 +138,19 @@
     <!-- Connection Status -->
     <div class="container">
         <h2>🔗 Connection Status</h2>
-        <button onclick="loadConnectedShops()">Refresh Connected Shops</button>
+        <div style="margin-bottom: 20px;">
+            <button onclick="loadConnectedShops()">Refresh Connected Shops</button>
+            <button onclick="connectWithShopify()" style="background: linear-gradient(135deg, #96bf48 0%, #5b8930 100%); margin-left: 10px;">
+                🛍️ Connect with Shopify
+            </button>
+        </div>
+        <div class="instructions">
+            <strong>📖 Connection Options:</strong>
+            <ul>
+                <li><strong>Connect with Shopify:</strong> Click the button above to connect your store (like Google auth)</li>
+                <li><strong>Manual Connection:</strong> Use the direct URL format if needed</li>
+            </ul>
+        </div>
         <div id="connectionStatus" class="result">Loading...</div>
     </div>
 
@@ -307,6 +319,13 @@
                     statusDiv.innerHTML = `<div>Connected Shops (${data.totalShops}):</div>${shopsHtml}`;
                 }
             }
+        }
+
+        function connectWithShopify() {
+            // Redirect to the generic OAuth endpoint
+            // User will be taken to Shopify to log in and select their store
+            console.log('🚀 Initiating Shopify connection...');
+            window.location.href = `${baseUrl}/oauth/connect`;
         }
 
         async function createSubscription() {
