@@ -1,5 +1,6 @@
 package entity;
 
+import converter.StringEncryptionConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -31,9 +32,10 @@ public class IntegrationAccount {
     @Column(name = "external_shop_id", nullable = false, length = 255)
     private String externalShopId;
 
-    // Admin/API access token or credential material (ENCRYPT THIS COLUMN)
+    // Admin/API access token or credential material (ENCRYPTED)
     @Lob
     @Column(name = "access_token", nullable = false)
+    @Convert(converter = StringEncryptionConverter.class)
     private String accessToken;
 
     // optional: comma-separated scopes or JSON
